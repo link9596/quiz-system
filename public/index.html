@@ -293,7 +293,7 @@ html.light-theme .pi-count { text-shadow: 0 0 4px rgba(255,255,255,0.65); }
 .mock-record-card .mrc-score { position: relative; width: 62px; height: 62px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; flex-shrink: 0; font-variant-numeric: tabular-nums; background: none; color: var(--text-primary); letter-spacing: -.5px; }
 .mock-record-card .mrc-score svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .mock-record-card .mrc-score .ring-bg { fill: none; stroke: var(--input-bg); stroke-width: 5; }
-.mock-record-card .mrc-score .ring-fg { fill: none; stroke: var(--accent-blue); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 163.36; stroke-dashoffset: 163.36; transition: stroke-dashoffset .6s ease-out; }
+.mock-record-card .mrc-score .ring-fg { fill: none; stroke: var(--success-green); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 163.36; stroke-dashoffset: 163.36; transition: stroke-dashoffset .6s ease-out, stroke .2s; }
 .mock-record-card .mrc-score.fail .ring-fg { stroke: var(--error-pink); }
 .mock-record-card .mrc-score span { position: relative; z-index: 1; }
 .mock-record-card .mrc-body { flex: 1; min-width: 0; }
@@ -307,7 +307,7 @@ html.light-theme .pi-count { text-shadow: 0 0 4px rgba(255,255,255,0.65); }
 .mock-score-ring { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
 .mock-score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .mock-score-ring .ring-bg { fill: none; stroke: var(--input-bg); stroke-width: 10; }
-.mock-score-ring .ring-fg { fill: none; stroke: var(--accent-blue); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 326.73; stroke-dashoffset: 326.73; transition: stroke-dashoffset .9s ease-out, stroke .2s; }
+.mock-score-ring .ring-fg { fill: none; stroke: var(--success-green); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 326.73; stroke-dashoffset: 326.73; transition: stroke-dashoffset .9s ease-out, stroke .2s; }
 .mock-score-ring.fail .ring-fg { stroke: var(--error-pink); }
 .mock-score-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .mock-score-text span { font-size: 38px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; }
@@ -531,13 +531,15 @@ html.light-theme .bottom-nav { border-top: 1px solid rgba(0,0,0,.06); }
     cursor: pointer;
     font-family: inherit;
     padding: 4px;
-    transition: color .2s;
+    transition: color .2s, background-color .32s ease;
     position: relative;
 }
 .bottom-nav-item svg { width: 22px; height: 22px; }
 .bottom-nav-item span { font-size: 11px; font-weight: 600; }
 .bottom-nav-item.active { color: var(--accent-blue); }
-.bottom-nav-item:active { background-color: rgba(127,127,127,.1); }
+.bottom-nav-item:active { background-color: rgba(127,127,127,.1); transition-duration: .01s; }
+/* 抬手后遮罩缓慢淡出 */
+.bottom-nav-item:not(:active) { background-color: rgba(127,127,127,0); }
 
 /* ================= 我的 / 个人中心 ================= */
 .profile-card {
@@ -555,6 +557,16 @@ html.light-theme .bottom-nav { border-top: 1px solid rgba(0,0,0,.06); }
 .profile-info { flex: 1; min-width: 0; }
 .profile-name { font-size: 17px; font-weight: 700; margin-bottom: 4px; word-break: break-all; }
 .profile-email { font-size: 13px; color: var(--text-secondary); word-break: break-all; }
+.profile-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.profile-sync {
+    padding: 8px 14px; border-radius: 8px;
+    background: none; border: 1px solid var(--border-color);
+    color: var(--text-secondary); font-size: 13px; cursor: pointer;
+    font-family: inherit; transition: all .2s; flex-shrink: 0; white-space: nowrap;
+}
+.profile-sync:hover { color: var(--accent-light); border-color: var(--accent-light); }
+.profile-sync:active { transform: scale(.95); }
+.profile-sync:disabled { opacity: .55; cursor: default; }
 .profile-logout {
     padding: 8px 14px; border-radius: 8px;
     background: none; border: 1px solid var(--border-color);
@@ -822,16 +834,27 @@ html.light-theme .sub-card {
 .sub-alert .sa-icon { flex-shrink: 0; }
 
 /* ================= 购买 / 客服 弹窗 ================= */
-.purchase-dialog, .support-dialog {
+.purchase-dialog {
+    /* 顶部标题与底部按钮固定，只有中间内容滚动；不加任何分隔线 */
+    display: flex; flex-direction: column;
+    width: 100%; max-width: 420px; max-height: 86vh;
+    overflow: hidden;
+    background-color: var(--card-bg); border-radius: 16px;
+    padding: 20px 20px 16px; box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    transform: scale(.94); transition: transform .25s cubic-bezier(.22,.61,.36,1);
+    border: 1px solid var(--border-color);
+}
+.support-dialog {
     width: 100%; max-width: 420px; max-height: 88vh; overflow-y: auto;
     background-color: var(--card-bg); border-radius: 16px;
     padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,.45);
     transform: scale(.94); transition: transform .25s cubic-bezier(.22,.61,.36,1);
     border: 1px solid var(--border-color);
 }
+#pdBody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px; }
 .dialog-overlay.show .purchase-dialog,
 .dialog-overlay.show .support-dialog { transform: scale(1); }
-.pd-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.pd-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-shrink: 0; }
 .pd-title { font-size: 16px; font-weight: 800; flex: 1; }
 .pd-close {
     width: 30px; height: 30px; border-radius: 8px; background: none; border: none;
@@ -866,6 +889,14 @@ html.light-theme .sub-card {
     flex-shrink: 0; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
     background: rgba(81,70,182,.18); color: var(--accent-light);
 }
+.po-price {
+    flex-shrink: 0; align-self: flex-start; text-align: right; line-height: 1.15;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.po-price .num { font-size: 15px; font-weight: 800; color: var(--accent-light); }
+.po-price .num::before { content: '¥'; font-size: 11px; font-weight: 700; margin-right: 1px; }
+.po-price .unit { display: block; font-size: 10px; color: var(--text-secondary); font-weight: 600; }
+.plan-option.active .po-price .num { color: var(--accent-light); }
 .act-option {
     display: flex; gap: 11px; align-items: flex-start;
     padding: 12px 13px; border-radius: 12px; margin-bottom: 9px;
@@ -887,7 +918,7 @@ html.light-theme .sub-card {
     background: var(--card-bg-2); border: 1px dashed var(--border-color);
 }
 .pd-note { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
-.pd-foot { display: flex; gap: 10px; margin-top: 18px; }
+.pd-foot { display: flex; gap: 10px; margin-top: 14px; flex-shrink: 0; }
 .pd-foot .sub-btn { padding: 13px; }
 .pd-wait { text-align: center; padding: 10px 0 4px; }
 .pd-wait .pw-spinner {
@@ -1208,12 +1239,6 @@ html.light-theme .sub-card {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
                     <path d="M3 3v5h5"/>
-                </svg>
-            </button>
-            <button class="icon-btn" id="syncBtn" style="display:none;" title="立即同步">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12a9 9 0 1 1-3-6.7"/>
-                    <path d="M21 3v6h-6"/>
                 </svg>
             </button>
             <button class="icon-btn" id="settingsBtn" title="设置">
@@ -1845,7 +1870,6 @@ function getCurrentUser() {
 function setCurrentUser(user) {
     if (user) localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     else localStorage.removeItem(USER_STORAGE_KEY);
-    updateSyncButtonVisibility();
 }
 
 async function fetchUserInfo() {
@@ -1901,6 +1925,7 @@ async function apiLogout() {
     setCurrentUser(null);
     // 清理本地同步状态
     localStorage.removeItem('quiz_sync_v1');
+    if (typeof clearSubCache === 'function') clearSubCache();
     // 退出后回到登录门
     if (typeof showAuthGate === 'function') showAuthGate('login');
 }
@@ -1912,6 +1937,8 @@ const STORE_KEY = 'quiz_app_v1';
 const WRONG_STREAK_KEY = 'wrong_streak_threshold';
 const MOCK_RECORDS_KEY = 'mock_exam_records';
 const UNFINISHED_EXAM_KEY = 'quiz_unfinished_exam';
+// 从云端同步下来、还没补回题目正文的快照
+const CLOUD_EXAM_KEY = 'quiz_unfinished_exam_cloud';
 
 function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; } }
 function saveStore(data) { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {} }
@@ -1985,13 +2012,31 @@ function addMockRecord(record) {
     markPendingSync('mock_add', record);
 }
 function qBankId(q) { return (q && q._bankId) ? q._bankId : state.bankId; }
-
+/**
+ * 考试态（答题 / 标记 / 选项乱序）的唯一键。
+ * 必须带上题库 id：智能模考会从多个题库抽题，而 _idx 是「题库内下标」，
+ * 不同题库的 _idx 会重复（都从 0 开始），只用 _idx 当键会导致
+ * 「答了 A 题库第 5 题，B 题库第 5 题也变成已作答」，
+ * 并且答题卡统计会少算（80 题只有 78 个不同的键）。
+ */
+function examKey(q) { return qBankId(q) + '#' + (q ? q._idx : ''); }
+/** 未完成考试快照的格式版本（答题键从 _idx 改成 题库id#_idx） */
+const EXAM_KEY_VER = 2;
 /* ---------- 未完成考试存储 ---------- */
-function saveUnfinishedExam() {
+/** 云端同步节流状态：每答 2 题或间隔 30 秒推一次 */
+let examSyncMark = { pushedCount: -1, pushedAt: 0 };
+
+/**
+ * 保存未完成考试（本机 + 云端）。
+ * @param {boolean} [force] true 时立刻推云端（退出考试 / 切后台 / 交卷前）
+ */
+function saveUnfinishedExam(force) {
     if (state.answerMode !== 'exam' || !state.examConfig) return;
+    let snapshot = null;
     try {
-        const snapshot = {
+        snapshot = {
             ts: Date.now(),
+            keyVer: EXAM_KEY_VER,     // 答题键格式版本，避免旧快照错乱
             bankId: state.bankId,
             bankCfg: state.bankCfg,
             activeQuestions: state.activeQuestions,
@@ -2008,8 +2053,52 @@ function saveUnfinishedExam() {
     } catch (e) {
         console.warn('无法保存未完成考试', e);
     }
+    if (!snapshot) return;
+
+    // 云端：每答 2 题推一次，或距上次推送超过 30 秒；退出/交卷时强制推
+    const answered = Object.keys(state.examAnswers || {}).length;
+    const now = Date.now();
+    const delta = Math.abs(answered - examSyncMark.pushedCount);
+    if (force || delta >= 2 || (delta >= 1 && now - examSyncMark.pushedAt > 30000)) {
+        examSyncMark = { pushedCount: answered, pushedAt: now };
+        // 上传时只带「题库 id + 题库内下标」的引用，不带整份题目正文：
+        // 一个 80 题的快照连正文要上百 KB，而 D1 单条 SQL 语句有 100KB 上限；
+        // 题库本身是静态 JSON，另一台设备按引用重新加载即可完整还原试卷。
+        markPendingSync('exam_state', toCloudExamSnapshot(snapshot));
+    }
 }
+/** 本机快照 -> 云端快照（去掉题目正文，只留引用） */
+function toCloudExamSnapshot(snapshot) {
+    const cloud = Object.assign({}, snapshot);
+    cloud.refs = (snapshot.activeQuestions || []).map(q => [qBankId(q), q._idx]);
+    delete cloud.activeQuestions;
+    return cloud;
+}
+
+/** 云端快照 -> 本机快照（按引用把题目从题库里取回来） */
+async function fromCloudExamSnapshot(cloud) {
+    const refs = cloud && cloud.refs;
+    if (!Array.isArray(refs) || !refs.length) return null;
+    const rebuilt = [];
+    for (const ref of refs) {
+        try {
+            const qs = await ensureBankLoaded(ref[0]);
+            const q = qs && qs[ref[1]];
+            if (!q) return null;          // 题库版本对不上，宁可不恢复
+            // 必须补上 _bankId，否则 examKey 会退化成「只用 _idx」，模考又会串题
+            rebuilt.push(Object.assign({}, q, { _bankId: ref[0] }));
+        } catch (e) {
+            return null;                  // 题库没加载成功，稍后再试
+        }
+    }
+    const local = Object.assign({}, cloud, { activeQuestions: rebuilt });
+    delete local.refs;
+    return local;
+}
+
 function clearUnfinishedExam() {
+    examSyncMark = { pushedCount: -1, pushedAt: 0 };
+    markPendingSync('exam_state', { cleared: true });
     localStorage.removeItem(UNFINISHED_EXAM_KEY);
 }
 function getUnfinishedExam() {
@@ -2017,12 +2106,36 @@ function getUnfinishedExam() {
         const raw = localStorage.getItem(UNFINISHED_EXAM_KEY);
         if (!raw) return null;
         const data = JSON.parse(raw);
+        // 旧版本快照用的是「只按 _idx」的答题键，格式已不兼容，直接丢弃
+        if (data.keyVer !== EXAM_KEY_VER) {
+            localStorage.removeItem(UNFINISHED_EXAM_KEY);
+            return null;
+        }
         // 超过 7 天自动清除
         if (Date.now() - data.ts > 7 * 86400 * 1000) {
             localStorage.removeItem(UNFINISHED_EXAM_KEY);
             return null;
         }
         return data;
+    } catch (e) { return null; }
+}
+
+/**
+ * 异步取未完成考试：本机没有时，尝试把云端快照补回题目正文。
+ * 用户点「开始模考」时调用，此时题库通常已加载好。
+ */
+async function resolveUnfinishedExam() {
+    const local = getUnfinishedExam();
+    if (local) return local;
+    try {
+        const raw = localStorage.getItem(CLOUD_EXAM_KEY);
+        if (!raw) return null;
+        const cloud = JSON.parse(raw);
+        const snap = await fromCloudExamSnapshot(cloud);
+        if (!snap) return null;
+        localStorage.setItem(UNFINISHED_EXAM_KEY, JSON.stringify(snap));
+        localStorage.removeItem(CLOUD_EXAM_KEY);
+        return snap;
     } catch (e) { return null; }
 }
 
@@ -2066,7 +2179,9 @@ function setSyncVer(v) {
  */
 function markPendingSync(type, payload) {
     try {
-        const arr = readOutbox();
+        let arr = readOutbox();
+        // exam_state 是「整份快照」，只保留最新一条，否则答案每变一次就多几十 KB
+        if (type === 'exam_state') arr = arr.filter(c => c.type !== 'exam_state');
         arr.push({ type, payload, ts: Date.now(), owner: (getCurrentUser() || {}).id || null });
         writeOutbox(arr);
     } catch (e) {}
@@ -2110,7 +2225,7 @@ async function syncNow(options = {}) {
 
         // 推送成功：先清掉已推的部分，再合并云端数据
         writeOutbox(outbox.slice(500));
-        const changed = applyRemoteChanges(data);
+        const changed = await applyRemoteChanges(data);
         setSyncVer(data.serverVer);
 
         if (readOutbox().length) scheduleSyncUpload();
@@ -2127,7 +2242,7 @@ async function syncNow(options = {}) {
 function uploadOutbox(options) { return syncNow(options); }
 
 /** 把云端拉回来的变更合并进本地存储 */
-function applyRemoteChanges(data) {
+async function applyRemoteChanges(data) {
     let touched = false;
 
     // 按题库分组后再写：setBankStore 会序列化整个题库的 JSON，
@@ -2168,7 +2283,36 @@ function applyRemoteChanges(data) {
     }
 
     if (mergeRemoteMockRecords(data.m || [])) touched = true;
+    if (await applyRemoteExamState(data.e || [])) touched = true;
     return touched;
+}
+
+/**
+ * 合并云端「未完成考试」快照。
+ * 云端比本机新时才覆盖，这样换设备登录后点「开始模考」会弹出「恢复考试」。
+ */
+async function applyRemoteExamState(rows) {
+    if (!rows || !rows.length) return false;
+    let snap = null;
+    try {
+        const row = rows[0];
+        snap = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+    } catch (e) { return false; }
+    if (!snap || snap.keyVer !== EXAM_KEY_VER) return false;
+
+    const local = getUnfinishedExam();
+    if (local && (local.ts || 0) >= (snap.ts || 0)) return false;
+
+    // 先原样留存，题目正文按引用异步补回来
+    try { localStorage.setItem(CLOUD_EXAM_KEY, JSON.stringify(snap)); } catch (e) {}
+    const local2 = await fromCloudExamSnapshot(snap);
+    if (!local2) return false;          // 题库暂时没就绪，等用户点「开始模考」时再补
+    try {
+        localStorage.setItem(UNFINISHED_EXAM_KEY, JSON.stringify(local2));
+        localStorage.removeItem(CLOUD_EXAM_KEY);
+        examSyncMark = { pushedCount: Object.keys(local2.examAnswers || {}).length, pushedAt: Date.now() };
+        return true;
+    } catch (e) { return false; }
 }
 
 /** 合并云端模考记录（用 ts 去重，本地已有同一条就跳过） */
@@ -2200,7 +2344,6 @@ function mergeRemoteMockRecords(rows) {
 
 /** 同步完成后刷新当前视图（答题中不打扰） */
 function refreshViewsAfterSync() {
-    updateSyncButtonVisibility();
     if (state.view === 'home') renderHome();
     else if (state.view === 'profile') renderProfile();
     else if (state.view === 'mockHistory') renderMockHistory();
@@ -2209,7 +2352,7 @@ function refreshViewsAfterSync() {
 // 页面可见性变化 & 网络恢复时触发同步
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-        if (state.view === 'quiz' && state.answerMode === 'exam') saveUnfinishedExam();
+        if (state.view === 'quiz' && state.answerMode === 'exam') saveUnfinishedExam(true);
         uploadOutbox({ keepalive: true });
     }
 });
@@ -2218,7 +2361,7 @@ window.addEventListener('online', () => {
     fetchUserInfo().then(u => { if (state.view === 'profile') renderProfile(); });
 });
 window.addEventListener('beforeunload', () => {
-    if (state.view === 'quiz' && state.answerMode === 'exam') saveUnfinishedExam();
+    if (state.view === 'quiz' && state.answerMode === 'exam') saveUnfinishedExam(true);
     // 防抖还没到点就关页面时，用 keepalive 尽力把最后一批推出去
     if (readOutbox().length) {
         try {
@@ -2345,7 +2488,6 @@ const btnRecite = document.getElementById('btnRecite');
 const favBtn = document.getElementById('favBtn');
 const submitExamBtn = document.getElementById('submitExamBtn');
 const globalResetBtn = document.getElementById('globalResetBtn');
-const syncBtn = document.getElementById('syncBtn');
 const correctStat = document.getElementById('correctStat');
 const wrongStat = document.getElementById('wrongStat');
 const examDoneStat = document.getElementById('examDoneStat');
@@ -2488,18 +2630,25 @@ document.querySelectorAll('.bottom-nav-item').forEach(btn => {
     btn.addEventListener('click', () => switchBottomNav(btn.getAttribute('data-nav')));
 });
 
-/* ---------- 同步按钮 ---------- */
-function updateSyncButtonVisibility() {
-    syncBtn.style.display = getCurrentUser() ? '' : 'none';
+/* ---------- 同步 ---------- */
+/** 同步按钮已移到「我的」页用户信息栏，那里按需绑定 */
+function bindProfileSyncButton(btn) {
+    if (!btn) return;
+    btn.onclick = async () => {
+        if (!getCurrentUser()) return;
+        const label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '同步中…';
+        try {
+            await syncNow();
+            await fetchUserInfo();
+            if (state.view === 'profile') renderProfile();
+        } finally {
+            btn.disabled = false;
+            btn.textContent = label || '同步数据';
+        }
+    };
 }
-syncBtn.addEventListener('click', async () => {
-    if (!getCurrentUser()) return;
-    syncBtn.style.opacity = '.5';
-    await uploadOutbox();
-    await fetchUserInfo();
-    syncBtn.style.opacity = '';
-    if (state.view === 'profile') renderProfile();
-});
 
 /* =========================================================================
  * 11. 题库卡片
@@ -2728,7 +2877,7 @@ mockHistoryBtn.addEventListener('click', () => navigate('mockHistory'));
 
 /* 开始模考：先检查未完成考试 */
 mockStartBtn.addEventListener('click', async () => {
-    const unfinished = getUnfinishedExam();
+    const unfinished = await resolveUnfinishedExam();
     if (unfinished) {
         showResumeExamDialog(unfinished);
         return;
@@ -3098,7 +3247,7 @@ async function startReviewFromAnswers(answers) {
         state.retryMode = false;
         answers.forEach((ans, i) => {
             if (activeQs[i]) {
-                state.sessionAnswers[activeQs[i]._idx] = {
+    state.sessionAnswers[examKey(activeQs[i])] = {
                     isRight: ans.isRight,
                     userAnswer: ans.userAnswer,
                     _reviewMode: true
@@ -3646,7 +3795,7 @@ function beginExam(bankId, cfg) {
     selected = selected.slice(0, cfg.count);
     const optionOrder = {};
     if (cfg.shuffleOptions) {
-        selected.forEach(q => { optionOrder[q._idx] = shuffle(['A', 'B', 'C']); });
+        selected.forEach(q => { optionOrder[examKey(q)] = shuffle(['A', 'B', 'C']); });
     }
     state.bankId = bankId;
     state.bankCfg = bankCfg;
@@ -3727,7 +3876,7 @@ function submitExam() {
     let correct = 0, wrong = 0, unanswered = 0;
     const now = Date.now();
     state.activeQuestions.forEach(q => {
-        const userLetter = state.examAnswers[q._idx];
+    const userLetter = state.examAnswers[examKey(q)];
         if (!userLetter) { unanswered++; return; }
         const isRight = userLetter === q.q_answer;
         if (isRight) correct++; else wrong++;
@@ -3744,7 +3893,7 @@ function submitExam() {
     if (rate > prevMax) localStorage.setItem('quiz_max_score', String(rate));
 
     const examAnswersDetail = state.activeQuestions.map(q => {
-        const userLetter = state.examAnswers[q._idx] || null;
+        const userLetter = state.examAnswers[examKey(q)] || null;
         const isRight = userLetter === q.q_answer;
         return {
             bankId: q._bankId || state.bankId,
@@ -3952,13 +4101,13 @@ const examMarkedCount = document.getElementById('examMarkedCount');
 const MODE_NAMES = { sequence: '顺序练习', random: '随机练习', point: '知识点练习', wrongPractice: '错题练习', favPractice: '收藏练习' };
 
 function getOptionOrder(q) {
-    if (state.examOptionOrder && state.examOptionOrder[q._idx]) return state.examOptionOrder[q._idx];
+    if (state.examOptionOrder && state.examOptionOrder[examKey(q)]) return state.examOptionOrder[examKey(q)];
     return ['A', 'B', 'C'];
 }
 function updateMarkBtnUI() {
     const q = state.activeQuestions[state.currentIndex];
     if (!q) return;
-    const marked = !!state.examMarked[q._idx];
+    const marked = !!state.examMarked[examKey(q)];
     markBtn.classList.toggle('marked', marked);
     markBtn.textContent = marked ? '已标记' : '不确定';
 }
@@ -3966,8 +4115,8 @@ markBtn.addEventListener('click', () => {
     if (state.answerMode !== 'exam') return;
     const q = state.activeQuestions[state.currentIndex];
     if (!q) return;
-    if (state.examMarked[q._idx]) delete state.examMarked[q._idx];
-    else state.examMarked[q._idx] = true;
+    if (state.examMarked[examKey(q)]) delete state.examMarked[examKey(q)];
+    else state.examMarked[examKey(q)] = true;
     updateMarkBtnUI();
     updateQuizStats();
     saveUnfinishedExam();
@@ -3985,9 +4134,9 @@ function renderQuiz() {
     const hasReviewSession = Object.values(state.sessionAnswers).some(s => s && s._reviewMode);
     const isSessionMode = isWrongPractice || isFavPractice || hasReviewSession || isRetryMode;
 
-    const examAnswer = state.examAnswers[q._idx] || null;
+    const examAnswer = state.examAnswers[examKey(q)] || null;
     const examShowAnswerNow = isExam && state.examConfig && state.examConfig.showAnswer && !!examAnswer;
-    const session = state.sessionAnswers[q._idx];
+    const session = state.sessionAnswers[examKey(q)];
 
     let hasAnswered = false;
     let userAnswer = null;
@@ -4187,7 +4336,7 @@ function handleOptionClick(optionEl, originalLetter, q) {
     const isWrongPractice = state.practiceMode === 'wrongPractice';
     const isFavPractice = state.practiceMode === 'favPractice';
 
-    state.sessionAnswers[q._idx] = { isRight, userAnswer: originalLetter };
+    state.sessionAnswers[examKey(q)] = { isRight, userAnswer: originalLetter };
 
     if (isWrongPractice && state.wrongPracticeStats) {
         const threshold = getWrongStreakThreshold();
@@ -4249,7 +4398,7 @@ function handleOptionClick(optionEl, originalLetter, q) {
 }
 
 function handleExamOptionClick(originalLetter, q) {
-    state.examAnswers[q._idx] = originalLetter;
+    state.examAnswers[examKey(q)] = originalLetter;
     if (state.examConfig && state.examConfig.showAnswer) {
         state.isAnswered = true;
         renderQuiz();
@@ -4386,11 +4535,11 @@ function renderQuestionGrid() {
         btn.textContent = index + 1;
         if (index === state.currentIndex) btn.classList.add('current');
         const bid = qBankId(q);
-        const session = state.sessionAnswers[q._idx];
+        const session = state.sessionAnswers[examKey(q)];
 
         if (isExam) {
-            if (state.examAnswers[q._idx]) btn.classList.add('selected-bg');
-            if (state.examMarked[q._idx]) btn.classList.add('marked-bg');
+            if (state.examAnswers[examKey(q)]) btn.classList.add('selected-bg');
+            if (state.examMarked[examKey(q)]) btn.classList.add('marked-bg');
         } else if (isRetryMode) {
             // 空白
         } else if (isSessionMode) {
@@ -4697,12 +4846,17 @@ function renderProfile() {
                 <div class="profile-name">${escapeHtml(user.nickname || '用户')}</div>
                 <div class="profile-email">${escapeHtml(user.email || '')}</div>
             </div>
-            <button class="profile-logout" id="profileLogoutBtn">退出</button>
+            <div class="profile-actions">
+                <button class="profile-sync" id="profileSyncBtn">同步数据</button>
+                <button class="profile-logout" id="profileLogoutBtn">退出</button>
+            </div>
         </div>
         <div id="subPanel">
             <div class="sub-section"><div class="sub-empty">正在加载会员信息…</div></div>
         </div>
         <button class="profile-contact" id="profileContactBtn" type="button">联系客服</button>`;
+
+    bindProfileSyncButton(container.querySelector('#profileSyncBtn'));
 
     container.querySelector('#profileLogoutBtn').onclick = async () => {
         const ok = await confirmDialog('退出登录', '确定要退出登录吗？未同步的本地记录将保留在本设备。');
@@ -4726,7 +4880,20 @@ function showContactDialog() {
     return alertDialog('联系客服', '如有疑问请联系：微信 ' + CONTACT_WECHAT);
 }
 
+/**
+ * 加载会员状态。
+ * 先用本地缓存立刻渲染（TTL 5 分钟），只有缓存过期、或还有未完成订单时才真正请求，
+ * 避免每次进「我的」页都打一次接口。
+ */
 async function loadSubscription(autoShowError) {
+    const cached = readSubCache();
+    if (cached && cached.state) {
+        applySubState(cached.state, { skipCacheWrite: true });
+    }
+    if (cached && cached.fresh && !hasPendingWork(cached.state)) {
+        if (autoShowError) maybeAutoShowSubError();
+        return;
+    }
     if (subLoading) return;
     subLoading = true;
     const panel = document.getElementById('subPanel');
@@ -4735,18 +4902,51 @@ async function loadSubscription(autoShowError) {
         const data = await apiSubState();
         if (data.support) subSupport = data.support;
         if (data.state) applySubState(data.state);
-        else if (panel) panel.innerHTML = '<div class="sub-section"><div class="sub-empty">暂时无法获取会员信息</div></div>';
+        else if (panel && !subState) panel.innerHTML = '<div class="sub-section"><div class="sub-empty">暂时无法获取会员信息</div></div>';
     } catch (e) {
-        if (panel) panel.innerHTML = '<div class="sub-section"><div class="sub-empty">会员信息加载失败：' + escapeHtml(e.message || '') + '</div></div>';
+        if (panel && !subState) panel.innerHTML = '<div class="sub-section"><div class="sub-empty">会员信息加载失败：' + escapeHtml(e.message || '') + '</div></div>';
     } finally {
         subLoading = false;
     }
     if (autoShowError) maybeAutoShowSubError();
 }
 
-function applySubState(state) {
+/* ---------------- 会员状态本地缓存（TTL）---------------- */
+const SUB_CACHE_KEY = 'quiz_sub_cache_v1';
+const SUB_CACHE_TTL = 5 * 60 * 1000;   // 5 分钟
+
+/** 还有待支付 / 待激活的权益时要实时核对，不能吃缓存 */
+function hasPendingWork(state) {
+    return !!((state && state.pending && state.pending.length) || (state && state.unpaid && state.unpaid.length)
+        || (state && state.lastError));
+}
+
+function readSubCache() {
+    const u = getCurrentUser();
+    if (!u) return null;
+    try {
+        const raw = localStorage.getItem(SUB_CACHE_KEY);
+        if (!raw) return null;
+        const o = JSON.parse(raw);
+        if (!o || o.uid !== u.id || !o.state) return null;
+        return { state: o.state, fresh: (Date.now() - (o.ts || 0)) < SUB_CACHE_TTL };
+    } catch (e) { return null; }
+}
+
+function writeSubCache(state) {
+    const u = getCurrentUser();
+    if (!u || !state) return;
+    try { localStorage.setItem(SUB_CACHE_KEY, JSON.stringify({ uid: u.id, ts: Date.now(), state })); } catch (e) {}
+}
+
+function clearSubCache() {
+    try { localStorage.removeItem(SUB_CACHE_KEY); } catch (e) {}
+}
+
+function applySubState(state, options = {}) {
     subState = state;
     if (state.support) subSupport = state.support;
+    if (!options.skipCacheWrite) writeSubCache(state);
     const u = getCurrentUser();
     if (u) {
         const summary = {
@@ -5139,6 +5339,7 @@ function renderPurchaseStep() {
                     <div class="po-desc">解锁「${escapeHtml(p.subjectLabel)}」必做题库 · 时长 ${p.months} 个月起</div>
                 </div>
                 ${p.key === 'k1k2' ? '<span class="po-tag">推荐</span>' : ''}
+                <div class="po-price"><span class="num">${escapeHtml(p.price)}</span><span class="unit">元 / 月</span></div>
             </div>`).join('')}
 
         <div class="pd-label">开通方式</div>
@@ -5529,7 +5730,6 @@ async function loadWaline() {
  * 会话有效 → 播放退场动画进入 App；否则 → 登录门升起表单等用户登录。
  * ========================================================================= */
 updateModeSwitchUI();
-updateSyncButtonVisibility();
 renderView();
 if (appShellEl) appShellEl.classList.add('gone');
 

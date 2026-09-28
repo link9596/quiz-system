@@ -39,12 +39,11 @@ npx wrangler secret put PASSWORD_PEPPER
 ### 2.2 更新数据库
 
 ```bash
-# 新库
+# 建表
 npm run db:init
 
-# 已有旧库（订阅功能尚未上线时用这条，只需跑一次）
-npm run db:migrate
-```
+# 需要清空重来时
+npm run db:reset && npm run db:init
 
 ### 2.3 按需调整 `wrangler.toml`
 
@@ -58,6 +57,11 @@ PLAN_K2   = "3c128840baf411f1a55652540025c377"   # 科目二必做题库
 PLAN_K1K2 = "3cb96e6cbaf411f1819a52540025c377"   # 科目一 + 科目二必做题库
 
 SUPPORT_CONTACT = "客服邮箱：xxx@example.com｜QQ：123456789"
+
+# 套餐面板右上角展示的价格（元 / 月），仅用于显示，不影响实际扣款
+PLAN_PRICE_K1   = "28"
+PLAN_PRICE_K2   = "28"
+PLAN_PRICE_K1K2 = "52"
 ```
 
 ```toml
@@ -193,9 +197,11 @@ npx wrangler d1 execute quiz-db --remote --command "SELECT user_id,subject,statu
 # 手工补单（把 custom_id 换成实际值；用户已付款但自动开通失败时使用）
 npx wrangler d1 execute quiz-db --remote --command "SELECT afdian_order FROM pending_orders WHERE custom_id='TK-XXXXXXXXXXXX'"
 
-# 事件审计
-npx wrangler d1 execute quiz-db --remote --command "SELECT * FROM sub_events ORDER BY id DESC LIMIT 50"
-```
+# 题库进度 / 未完成考试（已并进 users）
+npx wrangler d1 execute quiz-db --remote --command "SELECT email, sync_ver, bank_meta, exam_ver, datetime(exam_updated_at,'unixepoch','localtime') AS exam_at FROM users ORDER BY updated_at DESC LIMIT 20"
+
+# 事件审计改用日志（原 sub_events 表已删除）
+npm run logs
 
 人工开通某用户某科目 N 天（应急）：
 
@@ -219,6 +225,10 @@ VALUES
 - 卡下方分区展示：**待激活权益**（点「激活」按钮 + 二次确认）、**待支付订单**（继续支付 / 删除订单 / 我已支付立即检查）、**会员服务**（购买入口）、**历史记录**。
 - 购买弹窗：选套餐 → 选激活方式（立即激活 / 延迟激活）→ 跳转爱发电 → 「等待支付结果」界面轮询，成功后自动切换到「开通成功」。
 - 触屏设备与 `prefers-reduced-motion` 下自动关闭 3D 动效。
+- 购买弹窗的标题与底部按钮**固定不动**，只有中间内容滚动，且不加分隔线。
+- 「我的」页的会员状态本地缓存 **5 分钟**（`quiz_sub_cache_v1`）：进页面立刻用缓存渲染，
+  缓存新鲜且没有待支付/待激活权益时不再请求接口；有待办事项则每次都实时核对。
+- 「同步数据」按钮已从顶栏移到用户信息栏的「退出」左边。
 
 ## 9. 自动化测试
 
@@ -231,7 +241,7 @@ npm test
 | 文件 | 覆盖内容 | 断言数 |
 | --- | --- | --- |
 | `tests/pepper.test.mjs` | 密码胡椒归一化、哈希格式、随机盐 | 8 |
-| `tests/migrate.test.mjs` | 旧库 → 新结构迁移、唯一索引、schema 与 migrate 结构一致 | 29 |
+| `tests/sync.test.mjs` | 云同步推送/下拉、since 增量、未完成考试、账号隔离 | 45 |
 | `tests/subscription.test.mjs` | 签名公式、下单链接、立即/延迟激活、叠加、组合套餐、过期、删除订单、定时任务、异常分支、越权防护 | 78 |
 | `tests/http.test.mjs` | Worker 全部路由、鉴权、状态码、安全头、删除订单、单触发器定时任务（含每日清理门控） | 60 |
 
@@ -252,4 +262,4 @@ npm test
   未配置时会退回内置默认胡椒，注册/登录仍可正常工作。
 - 旧的 `src/md5.js` 实现有误（轮函数漏加了 `a` 项，且使用了 Workers 不提供的 `unescape`），
   会导致爱发电签名永远校验失败，本次已重写并通过标准测试向量 + Node crypto 交叉校验。
-- `subscriptions` / `pending_orders` 表结构相对旧版有变化，旧库务必执行 `npm run db:migrate`。
+- 项目尚未上线，表结构以 `schema.sql` 为准；结构有变动时直接 `npm run db:reset && npm run db:init` 重建，不写迁移脚本。

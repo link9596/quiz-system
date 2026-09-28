@@ -22,6 +22,9 @@ const DEFAULT_PLAN_IDS = {
 // 爱发电返回的 month 不可用时使用的兜底时长（月）
 const DEFAULT_MONTHS = { k1: 1, k2: 1, k1k2: 1 };
 
+// 展示用价格（元 / 月），可在 wrangler.toml 用 PLAN_PRICE_* 覆盖
+const DEFAULT_PRICES = { k1: '28', k2: '28', k1k2: '52' };
+
 function envStr(env, key, fallback = '') {
     const v = env && env[key];
     return typeof v === 'string' && v.trim() ? v.trim() : fallback;
@@ -45,6 +48,7 @@ export function getPlans(env) {
             // 返回给前端的 id（与爱发电 plan_id 一致，便于排错；前端不直接使用）
             afdianPlanId: rawId,
             months,
+            price: envStr(env, 'PLAN_PRICE_' + key.toUpperCase(), '') || DEFAULT_PRICES[key],
             productType: 0,
             short: key === 'k1k2' ? '科目一+科目二' : SUBJECT_LABELS[key]
         };

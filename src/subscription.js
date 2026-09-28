@@ -56,14 +56,14 @@ function fallbackEnabled(env) {
     return String((env && env.AFDIAN_FALLBACK_MATCH) || '') === '1';
 }
 
-async function logEvent(env, userId, kind, detail) {
-    try {
-        await env.DB.prepare(
-            'INSERT INTO sub_events (user_id, kind, detail, created_at) VALUES (?1, ?2, ?3, ?4)'
-        ).bind(userId || null, kind, detail ? String(detail).slice(0, 500) : null, nowSec()).run();
-    } catch (e) {
-        console.error('sub_events log failed:', e && e.message);
-    }
+/**
+ * 订阅事件审计。
+ * 原来写 sub_events 表，为了减少表数量改成只打日志 ——
+ * 关键信息（下单、关联码、支付结果、失败原因）在 pending_orders / subscriptions
+ * 里都有留存，排查时也可以 `npm run logs` 看到实时输出。
+ */
+function logEvent(env, userId, kind, detail) {
+    console.log('[sub]', kind, userId || '-', detail || '');
 }
 
 // ---------------------------------------------------------------------------
@@ -702,6 +702,14 @@ export async function getSubscriptionState(env, userId, now = nowSec()) {
 
     const activeSubjects = Object.keys(subjects);
     state.subjects = { k1: subjects.k1 || null, k2: subjects.k2 || null };
+    // 没有任何生效中的权益时（已过期 / 已撤销），仍然给出「最后一次到期时间」，
+    // 否则前端「会员已于 X 到期」会显示成空的
+    if (!expireAt) {
+        for (const r of rows) {
+            const ms = (Number(r.expire_at) || 0) * 1000;
+            if (ms > expireAt) expireAt = ms;
+        }
+    }
     state.expireAt = expireAt || null;
     state.startAt = startAt || null;
     state.daysLeft = expireAt ? Math.max(0, Math.ceil((expireAt - Date.now()) / 86400000)) : 0;
@@ -786,7 +794,8 @@ export function publicPlanCatalog(env) {
         name: plans[key].name,
         subjects: plans[key].subjects,
         subjectLabel: plans[key].short,
-        months: plans[key].months
+        months: plans[key].months,
+        price: plans[key].price
     }));
 }
 

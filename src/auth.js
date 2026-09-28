@@ -72,36 +72,37 @@ async function handleLogin(request, env) {
 
     if (!email || !password) return jsonResponse({ error: '请填写邮箱和密码' }, 400);
 
-    const attempt = await env.DB.prepare(
-        'SELECT fail_count, locked_until FROM login_attempts WHERE identifier = ?'
-    ).bind(email).first();
-    if (attempt && attempt.locked_until && attempt.locked_until > now) {
-        return jsonResponse({ error: '账户已锁定，请稍后再试' }, 423);
-    }
-
+    // 账号 + 登录风控一次查出来（原 login_attempts 已并进 users）
     const user = await env.DB.prepare(
-        'SELECT id, email, password_hash, nickname FROM users WHERE email = ?'
+        'SELECT id, email, password_hash, nickname, fail_count, locked_until FROM users WHERE email = ?'
     ).bind(email).first();
 
     if (!user) {
+        // 不存在的邮箱：同样跑一次哈希，避免通过响应耗时探测账号是否存在
         await hashPassword(password, env.PASSWORD_PEPPER);
         return jsonResponse({ error: '邮箱或密码错误' }, 401);
     }
 
+    if (user.locked_until && user.locked_until > now) {
+        return jsonResponse({ error: '账户已锁定，请稍后再试' }, 423);
+    }
+
     const ok = await verifyPassword(password, user.password_hash, env.PASSWORD_PEPPER);
     if (!ok) {
-        const newCount = (attempt?.fail_count || 0) + 1;
+        const newCount = (user.fail_count || 0) + 1;
         const lockUntil = newCount >= 10 ? now + 900 : null;
         await env.DB.prepare(
-            `INSERT INTO login_attempts (identifier, fail_count, locked_until, updated_at)
-             VALUES (?1, ?2, ?3, ?4)
-             ON CONFLICT(identifier) DO UPDATE SET
-               fail_count = ?2, locked_until = ?3, updated_at = ?4`
-        ).bind(email, newCount, lockUntil, now).run();
+            'UPDATE users SET fail_count = ?1, locked_until = ?2, updated_at = ?3 WHERE id = ?4'
+        ).bind(newCount, lockUntil, now, user.id).run();
         return jsonResponse({ error: '邮箱或密码错误' }, 401);
     }
 
-    await env.DB.prepare('DELETE FROM login_attempts WHERE identifier = ?').bind(email).run();
+    // 登录成功：只有之前失败过才需要写一次（避免每次登录都产生一次写）
+    if (user.fail_count || user.locked_until) {
+        await env.DB.prepare(
+            'UPDATE users SET fail_count = 0, locked_until = NULL, updated_at = ?1 WHERE id = ?2'
+        ).bind(now, user.id).run();
+    }
 
     const sub = await getSubscriptionSummary(env, user.id, now);
     const session = await createSession(env, user.id, now);

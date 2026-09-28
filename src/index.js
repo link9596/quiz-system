@@ -76,10 +76,10 @@ export default {
             try {
                 await env.DB.batch([
                     env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now),
-                    env.DB.prepare('DELETE FROM login_attempts WHERE locked_until IS NOT NULL AND locked_until < ?').bind(now),
+                    // 登录失败计数并进 users 后，只需把过期的锁定标记清掉
+                    env.DB.prepare('UPDATE users SET fail_count = 0, locked_until = NULL WHERE locked_until IS NOT NULL AND locked_until < ?').bind(now),
                     env.DB.prepare("DELETE FROM pending_orders WHERE created_at < ? AND status = 'done'").bind(now - 86400 * 30),
-                    env.DB.prepare("DELETE FROM pending_orders WHERE created_at < ? AND status <> 'done'").bind(now - 86400 * 60),
-                    env.DB.prepare('DELETE FROM sub_events WHERE created_at < ?').bind(now - 86400 * 90)
+                    env.DB.prepare("DELETE FROM pending_orders WHERE created_at < ? AND status <> 'done'").bind(now - 86400 * 60)
                 ]);
                 console.log('Daily cleanup done');
             } catch (e) {

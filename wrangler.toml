@@ -48,6 +48,11 @@ PLAN_MONTHS_K1 = "1"
 PLAN_MONTHS_K2 = "1"
 PLAN_MONTHS_K1K2 = "1"
 
+# 展示用价格（元 / 月），仅用于套餐面板右上角标价
+PLAN_PRICE_K1 = "28"
+PLAN_PRICE_K2 = "28"
+PLAN_PRICE_K1K2 = "52"
+
 # ---- 客服信息（开通失败时弹窗展示给用户）----
 SUPPORT_CONTACT = "客服邮箱：support@example.com｜QQ：123456789"
 

@@ -72,25 +72,30 @@ export async function handleSync(request, env) {
                 break;
             }
             case 'bank_current': {
-                if (!p.bankId) break;
+                const bid = safeBankId(p.bankId);
+                if (!bid) break;
                 const cur = Number.isFinite(p.currentIndex) ? p.currentIndex : 0;
                 stmts.push(env.DB.prepare(
                     `INSERT INTO b_meta (uid, bid, cur_idx, ver)
                      VALUES (?1, ?2, ?3, ?4)
                      ON CONFLICT(uid, bid) DO UPDATE SET
                        cur_idx = excluded.cur_idx, ver = excluded.ver`
-                ).bind(uid, p.bankId, cur, newVer));
+                ).bind(uid, bid, cur, newVer));
                 break;
             }
             case 'bank_reset': {
-                if (!p.bankId) break;
-                stmts.push(env.DB.prepare('DELETE FROM q_state WHERE uid = ? AND bid = ?').bind(uid, p.bankId));
-                stmts.push(env.DB.prepare('DELETE FROM b_meta WHERE uid = ? AND bid = ?').bind(uid, p.bankId));
+                const bid = safeBankId(p.bankId);
+                if (!bid) break;
+                stmts.push(env.DB.prepare('DELETE FROM q_state WHERE uid = ? AND bid = ?').bind(uid, bid));
+                stmts.push(env.DB.prepare('DELETE FROM b_meta WHERE uid = ? AND bid = ?').bind(uid, bid));
                 break;
             }
             case 'reset_all': {
                 stmts.push(env.DB.prepare('DELETE FROM q_state WHERE uid = ?').bind(uid));
                 stmts.push(env.DB.prepare('DELETE FROM b_meta WHERE uid = ?').bind(uid));
+                stmts.push(env.DB.prepare(
+                    'UPDATE users SET exam_data = NULL, exam_ver = ?1, exam_updated_at = ?2, updated_at = ?2 WHERE id = ?3'
+                ).bind(newVer, now, uid));
                 break;
             }
             case 'mock_add': {
@@ -114,6 +119,21 @@ export async function handleSync(request, env) {
                 ));
                 break;
             }
+            case 'exam_state': {
+                // 未完成考试的整份快照（跨设备续考）。cleared 表示已交卷/清除。
+                // 原 exam_state 表已并进 users；清除时保留一个自增的 exam_ver，
+                // 这样别的设备也能通过增量拉取知道「这份考试没了」。
+                if (!p || p.cleared === true) {
+                    stmts.push(env.DB.prepare(
+                        'UPDATE users SET exam_data = NULL, exam_ver = ?1, exam_updated_at = ?2, updated_at = ?2 WHERE id = ?3'
+                    ).bind(newVer, now, uid));
+                    break;
+                }
+                stmts.push(env.DB.prepare(
+                    'UPDATE users SET exam_data = ?1, exam_ver = ?2, exam_updated_at = ?3, updated_at = ?3 WHERE id = ?4'
+                ).bind(JSON.stringify(p), newVer, now, uid));
+                break;
+            }
         }
     }
 
@@ -129,9 +149,9 @@ export async function handleSync(request, env) {
 
     // 拉取自 since 之后的所有变更
     // 返回字段契约（前端 applyRemoteChanges 依赖它）：
-    //   q = q_state 答题/收藏/连错，m = mock_log 模考记录，k = b_meta 题库进度
+    //   q = q_state 答题/收藏/连错，m = mock_log 模考记录，k = 题库进度，e = 未完成考试快照
     const since = Number(body.since) || 0;
-    const [qPull, metaPull, mockPull] = await Promise.all([
+    const [qPull, metaPull, mockPull, userRow] = await Promise.all([
         env.DB.prepare(
             `SELECT bid, qid, st, ans, fav, streak FROM q_state
              WHERE uid = ? AND ver > ? LIMIT 2000`
@@ -142,38 +162,56 @@ export async function handleSync(request, env) {
         env.DB.prepare(
             `SELECT id, score, passed, correct, wrong, unanswered, total, dur, ts FROM mock_log
              WHERE uid = ? AND ver > ? ORDER BY id LIMIT 500`
-        ).bind(uid, since).all()
+        ).bind(uid, since).all(),
+        // 未完成考试是「1 行/用户」，直接挂在 users 上，顺带在这里读出来
+        env.DB.prepare(
+            'SELECT exam_data, exam_ver, exam_updated_at FROM users WHERE id = ?'
+        ).bind(uid).first()
     ]);
+
+    // e: 未完成考试。data 为 null 时表示「已清除」，前端据此清掉本地快照。
+    const eRows = [];
+    if (userRow && userRow.exam_ver != null && Number(userRow.exam_ver) > since) {
+        eRows.push({
+            data: userRow.exam_data,
+            ver: userRow.exam_ver,
+            updated_at: userRow.exam_updated_at
+        });
+    }
 
     return jsonResponse({
         ok: true,
         serverVer: newVer,
         q: qPull.results || [],
         m: mockPull.results || [],
-        k: metaPull.results || []
+        k: metaPull.results || [],
+        e: eRows
     });
 }
 
+/**
+ * 分配本次同步的版本号。
+ * 原 user_sync 表已并进 users：用户已登录必然存在，直接自增即可，
+ * 不再需要 upsert，也不再需要「表不存在」的兜底分支。
+ */
 async function bumpVersion(env, uid, now) {
     try {
         const row = await env.DB.prepare(
-            `INSERT INTO user_sync (uid, ver, last_sync_at)
-             VALUES (?1, 1, ?2)
-             ON CONFLICT(uid) DO UPDATE SET
-               ver = user_sync.ver + 1,
-               last_sync_at = ?2
-             RETURNING ver`
-        ).bind(uid, now).first();
-        if (row) return row.ver;
-    } catch { /* fallback */ }
+            `UPDATE users SET sync_ver = sync_ver + 1, last_sync_at = ?1
+              WHERE id = ?2 RETURNING sync_ver`
+        ).bind(now, uid).first();
+        if (row && typeof row.sync_ver === 'number') return row.sync_ver;
+    } catch { /* 个别环境不支持 RETURNING，走下面的兜底 */ }
     await env.DB.prepare(
-        `INSERT INTO user_sync (uid, ver, last_sync_at)
-         VALUES (?1, 1, ?2)
-         ON CONFLICT(uid) DO UPDATE SET
-           ver = user_sync.ver + 1, last_sync_at = ?2`
-    ).bind(uid, now).run();
-    const row = await env.DB.prepare('SELECT ver FROM user_sync WHERE uid = ?').bind(uid).first();
-    return row ? row.ver : 1;
+        'UPDATE users SET sync_ver = sync_ver + 1, last_sync_at = ?1 WHERE id = ?2'
+    ).bind(now, uid).run();
+    const row = await env.DB.prepare('SELECT sync_ver FROM users WHERE id = ?').bind(uid).first();
+    return (row && row.sync_ver) || 1;
+}
+
+/** 题库 id 只允许这些字符，避免被拼进 JSON 路径时破坏语法 */
+function safeBankId(bid) {
+    return String(bid || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
 }
 
 function buildCompactDetail(answers) {

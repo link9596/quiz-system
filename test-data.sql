@@ -267,8 +267,6 @@ WHERE p.status = 'pending' ORDER BY p.created_at DESC LIMIT 10;
 -- ============================================================================
 -- DELETE FROM subscriptions  WHERE source = 'manual_sql';
 -- DELETE FROM pending_orders WHERE custom_id LIKE 'TK-TEST%';
--- DELETE FROM sub_events     WHERE kind IN ('create_order','cancel_order','activate','grant','grant_pending')
---                              AND created_at > CAST(strftime('%s','now','-1 day') AS INTEGER);
 
 
 -- ============================================================================
