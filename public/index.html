@@ -136,10 +136,10 @@ body.with-bottom-nav .content-inner::after { height: calc(66px + env(safe-area-i
 .view { display: none; }
 .view.active { display: block; animation: viewIn .22s ease-out; }
 @keyframes viewIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.subject-tabs { display: flex; justify-content: center; align-items: flex-end; gap: 40px; margin-bottom: 26px; padding-bottom: 2px; }
+.subject-tabs { display: flex; justify-content: left; align-items: flex-end; gap: 10px; margin-bottom: 26px; padding-bottom: 2px; }
 .subject-tab {
     background: none; border: none; color: var(--text-secondary);
-    font-size: 19px; font-weight: 600; padding: 8px 6px 12px;
+    font-size: 19px; font-weight: 600;   padding: 0px 6px 5px;
     cursor: pointer; position: relative; transition: color .2s, font-size .2s;
     font-family: inherit; letter-spacing: .5px;
 }
@@ -1177,7 +1177,7 @@ html.light-theme .sub-card {
     .mode-switch button { padding: 6px 12px; font-size: 14px; }
     .subject-tab { font-size: 17px; }
     .subject-tab.active { font-size: 19px; }
-    .subject-tabs { gap: 30px; }
+    .subject-tabs { gap: 10px; }
     .exam-type-head, .exam-type-row { grid-template-columns: 1fr 70px 70px; padding-left: 16px; padding-right: 16px; gap: 6px; }
     .exam-setting-row { padding: 14px 16px; }
     .exam-panel-title { padding: 16px; font-size: 16px; }
