@@ -16,7 +16,11 @@
     "db:reset:local": "wrangler d1 execute quiz-db --file=./reset.sql --local",
     "db:shell": "wrangler d1 execute quiz-db --command=\"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name\" --remote",
     "db:count": "wrangler d1 execute quiz-db --command=\"SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM sessions) AS sessions, (SELECT COUNT(*) FROM q_state) AS q_state, (SELECT COUNT(*) FROM mock_log) AS mock_log\" --remote",
+    "db:sub": "wrangler d1 execute quiz-db --command=\"SELECT u.email, s.subject, s.status, s.plan_key, datetime(s.expire_at,'unixepoch','localtime') AS expire_at, s.source FROM subscriptions s JOIN users u ON u.id = s.user_id ORDER BY s.created_at DESC LIMIT 30\" --remote",
+    "db:orders": "wrangler d1 execute quiz-db --command=\"SELECT u.email, p.custom_id, p.plan_key, p.status, p.activate_mode, datetime(p.created_at,'unixepoch','localtime') AS created_at, p.last_error FROM pending_orders p JOIN users u ON u.id = p.user_id ORDER BY p.created_at DESC LIMIT 30\" --remote",
 
+    "db:test": "wrangler d1 execute quiz-db --file=./test-data.sql --remote",
+    "db:test:local": "wrangler d1 execute quiz-db --file=./test-data.sql --local",
     "secret:pepper": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\" | wrangler secret put PASSWORD_PEPPER",
     "secret:afdian": "wrangler secret put AFDIAN_USER_ID && wrangler secret put AFDIAN_TOKEN",
     "secret:list": "wrangler secret list",
