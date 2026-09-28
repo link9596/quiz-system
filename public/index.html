@@ -783,6 +783,13 @@ html.light-theme .sub-card {
 }
 .sub-item-btn.ghost { background: none; border: 1px solid var(--border-color); color: var(--text-secondary); }
 .sub-item-btn:active { transform: scale(.95); }
+.sub-item-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.sub-item-actions .sub-item-btn { padding: 7px 12px; font-size: 12.5px; white-space: nowrap; }
+.sub-item-btn.danger {
+    background: none; border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+.sub-item-btn.danger:hover { color: var(--error-pink); border-color: var(--error-pink); }
 .sub-empty { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
 .sub-alert {
     display: flex; gap: 10px; align-items: flex-start;
@@ -923,63 +930,170 @@ html.light-theme .sub-card {
     .bc-value { font-size: 13px; }
 }
 
-/* ================= 登录/注册对话框 ================= */
-.auth-dialog {
-    width: 100%; max-width: 380px;
-    background-color: var(--card-bg);
-    border-radius: 16px;
-    padding: 26px 22px 20px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    transform: scale(0.92);
-    transition: transform .25s cubic-bezier(0.22, 0.61, 0.36, 1);
+/* ================= 金卡（会员生效中） ================= */
+.bank-card.is-gold {
+    color: #2b1f04;
+    background:
+        radial-gradient(130% 150% at 6% -14%, rgba(255,255,255,.75), transparent 42%),
+        linear-gradient(135deg, #fdf0be 0%, #f4d271 26%, #e0ac33 55%, #b9861a 80%, #8d6410 100%);
+    border: 1px solid rgba(255,255,255,.55);
+    box-shadow: 0 12px 34px rgba(190,140,20,.35), 0 2px 6px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.75);
 }
-.dialog-overlay.show .auth-dialog { transform: scale(1); }
-.auth-tabs {
-    display: flex; gap: 4px; margin-bottom: 20px;
-    background: var(--input-bg); border-radius: 10px; padding: 4px;
+.bank-card.is-gold:hover { box-shadow: 0 26px 60px rgba(190,140,20,.45), 0 4px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.85); }
+/* 拉丝金属质感 */
+.bank-card.is-gold::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .35;
+    background: repeating-linear-gradient(112deg,
+        rgba(255,255,255,.55) 0 1px, rgba(255,255,255,0) 1px 4px,
+        rgba(120,80,0,.16) 4px 5px, rgba(255,255,255,0) 5px 9px);
 }
-.auth-tab {
-    flex: 1; padding: 9px;
-    background: none; border: none;
-    border-radius: 8px;
-    color: var(--text-secondary); font-size: 14px; font-weight: 600;
-    cursor: pointer; font-family: inherit;
-    transition: all .2s;
+.bank-card.is-gold .bc-watermark { opacity: .14; color: #6d4c05; }
+.bank-card.is-gold .bc-brand { opacity: 1; color: #3a2a05; }
+.bank-card.is-gold .bc-logo {
+    background: rgba(255,255,255,.55); border-color: rgba(255,255,255,.85);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,.9), 0 1px 3px rgba(120,80,0,.25);
 }
-.auth-tab.active { background: var(--accent-blue); color: #fff; }
-.auth-field { margin-bottom: 14px; }
-.auth-field label {
-    display: block; font-size: 12px; font-weight: 600;
-    color: var(--text-secondary); margin-bottom: 6px;
+.bank-card.is-gold .bc-chip {
+    background: linear-gradient(135deg, #ffffff, #cfd4da 42%, #f3f5f8 100%);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 1px 3px rgba(120,80,0,.3);
 }
-.auth-field input {
-    width: 100%; padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--input-border);
-    background: var(--input-bg);
-    color: var(--text-primary);
-    font-size: 15px; font-family: inherit;
-    outline: none; transition: border-color .2s;
+.bank-card.is-gold .bc-number { text-shadow: 0 1px 0 rgba(255,255,255,.65); }
+.bank-card.is-gold .bc-copy {
+    background: rgba(255,255,255,.5); border-color: rgba(255,255,255,.8); color: #3a2a05;
 }
-.auth-field input:focus { border-color: var(--accent-blue); }
-.auth-error {
-    font-size: 13px; color: var(--error-pink);
-    margin-bottom: 14px; min-height: 18px;
-    word-break: break-word;
+.bank-card.is-gold .bc-copy:hover { background: rgba(255,255,255,.75); }
+.bank-card.is-gold .bc-label { opacity: .62; }
+.bank-card.is-gold .bc-note { border-top-color: rgba(90,62,4,.28); opacity: .9; }
+.bank-card.is-gold .bc-status {
+    background: rgba(20,54,32,.88); border-color: rgba(255,255,255,.5); color: #b8f0cd;
 }
-.auth-submit {
-    width: 100%; padding: 13px;
-    border-radius: 10px;
-    background: var(--accent-blue); border: none;
-    color: #fff; font-size: 15px; font-weight: 700;
-    cursor: pointer; font-family: inherit;
-    transition: all .2s;
-    margin-bottom: 12px;
+.bank-card.is-gold .bc-glare {
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.85), transparent 60%);
 }
-.auth-submit:active { transform: scale(.98); }
-.auth-submit:disabled { opacity: .5; cursor: not-allowed; }
-.auth-hint { font-size: 12px; color: var(--text-secondary); text-align: center; line-height: 1.5; }
+/* 待激活：压暗成古铜色，与金卡区分开 */
+.bank-card.is-pending {
+    background:
+        radial-gradient(120% 150% at 10% -10%, rgba(255,255,255,.20), transparent 46%),
+        linear-gradient(135deg, #a8791c 0%, #7d5510 48%, #3b2705 100%);
+}
 
+/* ================= 启动 / 登录注册门 ================= */
+:root {
+    --ease-soft: cubic-bezier(.16, 1, .3, 1);
+    --ease-gate: cubic-bezier(.22, 1, .36, 1);
+}
+.auth-gate {
+    position: fixed; inset: 0; z-index: 300;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 24px;
+    background: var(--bg-color);
+    overflow: hidden;
+    opacity: 1; visibility: visible;
+    transition: opacity .5s var(--ease-gate), transform .62s var(--ease-gate), visibility 0s;
+}
+.auth-gate.gone {
+    opacity: 0; transform: scale(1.045);
+    pointer-events: none; visibility: hidden;
+    transition: opacity .5s var(--ease-gate), transform .62s var(--ease-gate), visibility 0s linear .62s;
+}
+/* 应用外壳：登录前不可见也不可点 */
+.app-container { transition: opacity .35s var(--ease-gate), transform .45s var(--ease-gate); }
+.app-container.gone { opacity: 0; transform: scale(.975); pointer-events: none; }
+
+.gate-stage { position: relative; width: 100%; max-width: 340px; transform: translateZ(0) translateY(0); transition: transform .88s var(--ease-soft); will-change: transform; }
+/* 整组（logo + 表单）一起上移，保证在矮屏上也不会把表单顶出视口 */
+.auth-gate.login .gate-stage { transform: translateZ(0) translateY(calc(-1 * var(--gate-lift, 0px))); }
+@keyframes gateIn {
+    from { opacity: 0; transform: translateY(14px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.gate-logo {
+    width: 66px; height: 66px; border-radius: 21px; display: grid; place-items: center;
+    background: linear-gradient(140deg, rgba(81,70,182,.28), rgba(81,70,182,.06));
+    border: 1px solid rgba(139,133,224,.35); color: var(--accent-light);
+    box-shadow: 0 14px 44px rgba(81,70,182,.22);
+    animation: gateFloat 3.6s ease-in-out infinite; margin-bottom: 20px;
+}
+.gate-logo svg { width: 32px; height: 32px; }
+@keyframes gateFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.gate-name { font-size: 21px; font-weight: 700; letter-spacing: -.02em; color: var(--text-primary); margin-bottom: 7px; }
+.gate-sub { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; text-align: center; }
+.gate-dots {
+    position: absolute; left: 0; right: 0; bottom: calc(-1 * var(--gate-gap, 22px));
+    display: flex; gap: 6px; justify-content: center; height: 6px;
+    opacity: 1; transition: opacity .32s var(--ease-gate), transform .45s var(--ease-soft);
+}
+.auth-gate.login .gate-dots { opacity: 0; transform: translateY(-8px) scale(.85); pointer-events: none; }
+.gate-dots i {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent-light);
+    animation: gateDot 1.25s var(--ease-gate) infinite; flex-shrink: 0;
+}
+.gate-dots i:nth-child(2) { animation-delay: .16s; }
+.gate-dots i:nth-child(3) { animation-delay: .32s; }
+@keyframes gateDot { 0%, 70%, 100% { opacity: .22; transform: scale(.68); } 35% { opacity: 1; transform: scale(1); } }
+
+.gate-form {
+    position: absolute; left: 0; right: 0; top: calc(100% + var(--gate-gap, 22px));
+    display: flex; flex-direction: column;
+}
+.gate-field, .gate-btn, .gate-err, .gate-tabs {
+    opacity: 0; transform: translateY(40px); pointer-events: none;
+    will-change: transform, opacity;
+    transition: opacity .55s var(--ease-gate), transform .85s var(--ease-soft);
+}
+.auth-gate.login .gate-tabs { opacity: 1; transform: translateY(0); pointer-events: auto; transition-delay: .06s; }
+.auth-gate.login .gate-field { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.auth-gate.login .gate-field:nth-of-type(1) { transition-delay: .10s; }
+.auth-gate.login .gate-field:nth-of-type(2) { transition-delay: .16s; }
+.auth-gate.login .gate-field:nth-of-type(3) { transition-delay: .22s; }
+.auth-gate.login .gate-btn { opacity: 1; transform: translateY(0); pointer-events: auto; transition-delay: .28s; }
+.auth-gate.login .gate-err { opacity: 1; transform: none; transition-delay: .34s; }
+.gate-err:empty { opacity: 0 !important; }
+
+.gate-tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--input-bg); border-radius: 12px; padding: 4px; }
+.gate-tab {
+    flex: 1; padding: 10px; background: none; border: none; border-radius: 9px;
+    color: var(--text-secondary); font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.gate-tab.active { background: var(--accent-blue); color: #fff; }
+.gate-field { margin-bottom: 12px; }
+.gate-field input {
+    width: 100%; padding: 15px 17px; border-radius: 15px;
+    background: var(--input-bg); border: 1px solid var(--input-border);
+    color: var(--text-primary); font-size: 16px; font-family: inherit; outline: none;
+    transition: border-color .25s, box-shadow .25s, background .25s;
+}
+.gate-field input::placeholder { color: var(--text-secondary); opacity: .75; }
+.gate-field input:focus {
+    border-color: rgba(81,70,182,.65);
+    box-shadow: 0 0 0 4px rgba(81,70,182,.14);
+}
+.gate-btn {
+    width: 100%; padding: 15px; border-radius: 15px; margin-top: 4px;
+    background: var(--accent-blue); border: none; color: #fff;
+    font-weight: 700; font-size: 15px; font-family: inherit; cursor: pointer;
+    transition: transform .16s var(--ease-gate), filter .2s, opacity .2s, box-shadow .2s;
+    box-shadow: 0 8px 24px rgba(81,70,182,.35);
+}
+.gate-btn:hover { filter: brightness(1.08); }
+.gate-btn:active { transform: scale(.975); }
+.gate-btn:disabled { opacity: .5; cursor: default; }
+.gate-err {
+    font-size: 12.5px; color: var(--error-pink); margin-top: 12px; min-height: 16px;
+    text-align: center; line-height: 1.6; word-break: break-word;
+}
+@media (max-height: 720px) {
+    .gate-logo { width: 54px; height: 54px; border-radius: 17px; margin-bottom: 14px; }
+    .gate-logo svg { width: 26px; height: 26px; }
+    .gate-name { font-size: 18px; }
+    .gate-sub { font-size: 12px; }
+    .gate-field input { padding: 13px 15px; font-size: 15px; }
+    .gate-btn { padding: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .gate-head, .gate-logo, .gate-dots i { animation: none !important; }
+}
 /* ================= 讨论区 ================= */
 .discuss-container {
     background: var(--card-bg);
@@ -1045,7 +1159,7 @@ html.light-theme .sub-card {
 </head>
 <body>
 
-<div class="app-container">
+<div class="app-container gone" id="appShell">
     <header class="header">
         <div class="header-left">
             <button class="icon-btn" id="backBtn" style="visibility:hidden;" aria-label="返回">
@@ -1453,28 +1567,36 @@ html.light-theme .sub-card {
     </div>
 </div>
 
-<!-- 登录/注册 -->
-<div class="dialog-overlay" id="authOverlay">
-    <div class="auth-dialog">
-        <div class="auth-tabs">
-            <button class="auth-tab active" id="authTabLogin">登录</button>
-            <button class="auth-tab" id="authTabRegister">注册</button>
+<!-- 启动 / 登录注册门（必须登录后才能进入 App） -->
+<div class="auth-gate" id="authGate">
+    <div class="gate-stage" id="gateStage">
+        <div class="gate-head-wrap" id="gateHeadWrap">
+            <div class="gate-head">
+                <div class="gate-logo">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                </div>
+                <div class="gate-name">航线题库</div>
+                <div class="gate-sub">登录后开始刷题<br>进度 / 收藏 / 错题本 / 模考记录云端同步</div>
+                <div class="gate-dots"><i></i><i></i><i></i></div>
+            </div>
         </div>
-        <div class="auth-field">
-            <label>邮箱</label>
-            <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email">
+        <div class="gate-form" id="gateForm">
+            <div class="gate-tabs">
+                <button class="gate-tab active" id="gateTabLogin" type="button">登录</button>
+                <button class="gate-tab" id="gateTabRegister" type="button">注册</button>
+            </div>
+            <div class="gate-field">
+                <input type="email" id="gateEmail" placeholder="邮箱" autocomplete="email" inputmode="email">
+            </div>
+            <div class="gate-field">
+                <input type="password" id="gatePassword" placeholder="密码" autocomplete="current-password">
+            </div>
+            <div class="gate-field" id="gateNickField" style="display:none;">
+                <input type="text" id="gateNickname" placeholder="昵称（可选）" autocomplete="nickname">
+            </div>
+            <button class="gate-btn" id="gateSubmit" type="button">登录</button>
+            <div class="gate-err" id="gateErr"></div>
         </div>
-        <div class="auth-field">
-            <label>密码</label>
-            <input type="password" id="authPassword" placeholder="至少 8 位，含大小写字母和数字" autocomplete="current-password">
-        </div>
-        <div class="auth-field" id="authNicknameField" style="display:none;">
-            <label>昵称（可选）</label>
-            <input type="text" id="authNickname" placeholder="如何称呼你" autocomplete="nickname">
-        </div>
-        <div class="auth-error" id="authError"></div>
-        <button class="auth-submit" id="authSubmit">登录</button>
-        <div class="auth-hint" id="authHint">没有账号？点上方"注册"</div>
     </div>
 </div>
 
@@ -1747,6 +1869,8 @@ async function apiLogout() {
     setCurrentUser(null);
     // 清理本地同步状态
     localStorage.removeItem('quiz_sync_v1');
+    // 退出后回到登录门
+    if (typeof showAuthGate === 'function') showAuthGate('login');
 }
 
 /* =========================================================================
@@ -4105,93 +4229,151 @@ function updateModalStats() {
 }
 
 /* =========================================================================
- * 27. 登录/注册对话框
+ * 27. 启动 / 登录注册门
+ * -------------------------------------------------------------------------
+ * 未登录不允许进入 App：authGate 全屏覆盖，校验会话后才收起。
+ * 动画参考「参考文件.html」——logo 居中浮现并上移，表单从下方升起。
  * ========================================================================= */
+const gateEl = document.getElementById('authGate');
+const gateFormEl = document.getElementById('gateForm');
+const gateHeadWrapEl = document.getElementById('gateHeadWrap');
+const gateEmailEl = document.getElementById('gateEmail');
+const gatePasswordEl = document.getElementById('gatePassword');
+const gateNickFieldEl = document.getElementById('gateNickField');
+const gateNicknameEl = document.getElementById('gateNickname');
+const gateSubmitEl = document.getElementById('gateSubmit');
+const gateErrEl = document.getElementById('gateErr');
+const gateTabLoginEl = document.getElementById('gateTabLogin');
+const gateTabRegisterEl = document.getElementById('gateTabRegister');
+const appShellEl = document.querySelector('.app-container');
+
+let gateMode = 'login';
+let gateBusy = false;
+
+/**
+ * 让「logo + 表单」整组在视口里保持舒适的位置：
+ * 头部上移多少，取决于表单实际高度（登录 / 注册高度不同）。
+ */
+function layoutAuthGate() {
+    if (!gateEl || !gateFormEl || !gateHeadWrapEl) return;
+    const gap = 22;
+    const formH = gateFormEl.offsetHeight || 0;
+    const headH = gateHeadWrapEl.offsetHeight || 0;
+    const vh = window.innerHeight;
+
+    // .gate-stage 只包住头部（表单是绝对定位挂在它下方），所以「仅头部居中」时
+    // 的位置是 (vh - headH) / 2；把整组按总高度居中需要上移这么多。
+    const total = headH + gap + formH;
+    const naturalTop = (vh - headH) / 2;
+    const desiredTop = Math.max(12, (vh - total) / 2);
+    const lift = Math.max(0, Math.round(naturalTop - desiredTop));
+
+    gateEl.style.setProperty('--gate-lift', lift + 'px');
+    gateEl.style.setProperty('--gate-gap', gap + 'px');
+}
+
+function setGateMode(mode) {
+    gateMode = mode === 'register' ? 'register' : 'login';
+    if (gateTabLoginEl) gateTabLoginEl.classList.toggle('active', gateMode === 'login');
+    if (gateTabRegisterEl) gateTabRegisterEl.classList.toggle('active', gateMode === 'register');
+    if (gateNickFieldEl) gateNickFieldEl.style.display = gateMode === 'register' ? '' : 'none';
+    if (gateSubmitEl) gateSubmitEl.textContent = gateMode === 'login' ? '登录' : '注册';
+    setGateError('');
+    // 昵称字段显隐会改变表单高度，需要重新计算上移量
+    requestAnimationFrame(layoutAuthGate);
+}
+
+function setGateError(msg) {
+    if (gateErrEl) gateErrEl.textContent = msg || '';
+}
+
+/** 显示登录门（mode 为空时保留当前标签页） */
+function showAuthGate(mode, message) {
+    if (!gateEl) return;
+    if (appShellEl) appShellEl.classList.add('gone');
+    gateEl.classList.remove('gone');
+    gateEl.classList.add('login');
+    if (mode) setGateMode(mode);
+    setGateError(message || '');
+    layoutAuthGate();
+    requestAnimationFrame(layoutAuthGate);
+    setTimeout(() => { if (gateEmailEl && !gateEmailEl.value) gateEmailEl.focus(); }, 320);
+}
+
+/** 收起登录门，进入 App */
+function hideAuthGate() {
+    if (gateEl) gateEl.classList.add('gone');
+    if (appShellEl) appShellEl.classList.remove('gone');
+}
+
+/** 兼容旧调用点（如「我的」页的游客卡片） */
 function openAuthDialog(mode = 'login') {
-    const overlay = document.getElementById('authOverlay');
-    const errorEl = document.getElementById('authError');
-    const emailInput = document.getElementById('authEmail');
-    const passwordInput = document.getElementById('authPassword');
-    const nicknameField = document.getElementById('authNicknameField');
-    const nicknameInput = document.getElementById('authNickname');
-    const submitBtn = document.getElementById('authSubmit');
-    const hint = document.getElementById('authHint');
-    const tabLogin = document.getElementById('authTabLogin');
-    const tabRegister = document.getElementById('authTabRegister');
+    showAuthGate(mode);
+}
 
-    let currentMode = mode;
+async function submitAuthGate() {
+    if (gateBusy) return;
+    const email = (gateEmailEl.value || '').trim();
+    const password = gatePasswordEl.value || '';
+    const nickname = (gateNicknameEl.value || '').trim();
 
-    const setMode = (m) => {
-        currentMode = m;
-        tabLogin.classList.toggle('active', m === 'login');
-        tabRegister.classList.toggle('active', m === 'register');
-        nicknameField.style.display = m === 'register' ? '' : 'none';
-        submitBtn.textContent = m === 'login' ? '登录' : '注册';
-        hint.textContent = m === 'login' ? '没有账号？点上方"注册"' : '已有账号？点上方"登录"';
-        errorEl.textContent = '';
-    };
-
-    tabLogin.onclick = () => setMode('login');
-    tabRegister.onclick = () => setMode('register');
-    setMode(currentMode);
-
-    emailInput.value = '';
-    passwordInput.value = '';
-    nicknameInput.value = '';
-    submitBtn.disabled = false;
-
-    overlay.classList.add('show');
-    setTimeout(() => emailInput.focus(), 200);
-
-    const handleSubmit = async () => {
-        errorEl.textContent = '';
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
-        const nickname = nicknameInput.value.trim();
-
-        if (!email || !password) {
-            errorEl.textContent = '请填写邮箱和密码';
+    if (!email || !password) { setGateError('请填写邮箱和密码'); return; }
+    if (gateMode === 'register') {
+        if (password.length < 8) { setGateError('密码至少 8 位'); return; }
+        if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+            setGateError('密码需包含大小写字母和数字');
             return;
         }
-        if (currentMode === 'register') {
-            if (password.length < 8) {
-                errorEl.textContent = '密码至少 8 位';
-                return;
-            }
-            if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-                errorEl.textContent = '密码需包含大小写字母和数字';
-                return;
-            }
+    }
+
+    gateBusy = true;
+    gateSubmitEl.disabled = true;
+    gateSubmitEl.textContent = gateMode === 'login' ? '登录中…' : '注册中…';
+    setGateError('');
+
+    try {
+        if (gateMode === 'login') await apiLogin(email, password);
+        else await apiRegister(email, password, nickname);
+        gatePasswordEl.value = '';
+        gateBusy = false;
+        gateSubmitEl.disabled = false;
+        setGateMode(gateMode);
+        enterApp();
+    } catch (e) {
+        gateBusy = false;
+        gateSubmitEl.disabled = false;
+        gateSubmitEl.textContent = gateMode === 'login' ? '登录' : '注册';
+        setGateError(e.message || '操作失败');
+    }
+}
+
+if (gateTabLoginEl) gateTabLoginEl.onclick = () => setGateMode('login');
+if (gateTabRegisterEl) gateTabRegisterEl.onclick = () => setGateMode('register');
+if (gateSubmitEl) gateSubmitEl.onclick = submitAuthGate;
+[gateEmailEl, gatePasswordEl, gateNicknameEl].forEach(el => {
+    if (!el) return;
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAuthGate(); });
+});
+window.addEventListener('resize', () => { if (gateEl && !gateEl.classList.contains('gone')) layoutAuthGate(); });
+window.addEventListener('orientationchange', () => setTimeout(layoutAuthGate, 250));
+
+setGateMode('login');
+layoutAuthGate();
+
+/** 校验通过后进入 App：收起门、预热题库、恢复同步与首页 */
+function enterApp() {
+    hideAuthGate();
+    (async () => {
+        for (const b of BANKS) {
+            if (!b.ready) continue;
+            try { await ensureBankLoaded(b.id); } catch (e) { /* 离线忽略 */ }
         }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = currentMode === 'login' ? '登录中...' : '注册中...';
-
-        try {
-            if (currentMode === 'login') await apiLogin(email, password);
-            else await apiRegister(email, password, nickname);
-            overlay.classList.remove('show');
-            submitBtn.disabled = false;
-            setMode(currentMode);
-            if (state.view === 'profile') renderProfile();
-            // 尝试上传本地 outbox
-            scheduleSyncUpload();
-        } catch (e) {
-            errorEl.textContent = e.message || '操作失败';
-            submitBtn.disabled = false;
-            submitBtn.textContent = currentMode === 'login' ? '登录' : '注册';
+        if (getCurrentUser()) {
+            uploadOutbox();
+            scheduleSyncUpload();   // 登录后把本地未同步的答题记录推上去
         }
-    };
-
-    submitBtn.onclick = handleSubmit;
-    const onKey = (e) => { if (e.key === 'Enter') handleSubmit(); };
-    emailInput.onkeydown = onKey;
-    passwordInput.onkeydown = onKey;
-    nicknameInput.onkeydown = onKey;
-
-    overlay.onclick = (e) => {
-        if (e.target === overlay) overlay.classList.remove('show');
-    };
+        if (state.view === 'home') renderHome();
+    })();
 }
 
 /* =========================================================================
@@ -4222,6 +4404,7 @@ function subPost(path, body) {
 const apiSubState = () => subApi('/state');
 const apiSubPlans = () => subApi('/plans');
 const apiSubCreate = (plan, activateMode) => subPost('/create', { plan, activateMode });
+const apiSubCancel = (customId) => subPost('/cancel', { customId });
 const apiSubCheck = () => subPost('/check', {});
 const apiSubActivate = (groupId) => subPost('/activate', { groupId });
 const apiSubBind = (orderNo) => subPost('/bind', { orderNo });
@@ -4267,7 +4450,7 @@ function currentMemberNo() {
 }
 function subStatusInfo(st) {
     switch (st && st.status) {
-        case 'active':   return { cls: '',            badge: 'ok',   label: '生效中',  text: '剩余 ' + (st.daysLeft || 0) + ' 天', icon: '✈' };
+        case 'active':   return { cls: 'is-gold',     badge: 'ok',   label: '生效中',  text: '剩余 ' + (st.daysLeft || 0) + ' 天', icon: '✈' };
         case 'pending':  return { cls: 'is-pending',  badge: 'warn', label: '待激活',  text: '已有未激活权益', icon: '🎫' };
         case 'unpaid':   return { cls: 'is-unpaid',   badge: 'warn', label: '待支付',  text: '订单等待支付', icon: '⏳' };
         case 'expired':  return { cls: 'is-expired',  badge: '',     label: '已过期',  text: '会员已过期', icon: '✈' };
@@ -4458,7 +4641,10 @@ function renderSubPanel() {
                             ${p.activateMode === 'delayed' ? '付款后暂不激活，可自行选择时机激活' : '付款后立即生效'}
                         </div>
                     </div>
-                    <button class="sub-item-btn ghost" data-pay="${escapeHtml(p.customId)}">继续支付</button>
+                    <div class="sub-item-actions">
+                        <button class="sub-item-btn ghost" data-pay="${escapeHtml(p.customId)}">继续支付</button>
+                        <button class="sub-item-btn danger" data-cancel="${escapeHtml(p.customId)}">删除订单</button>
+                    </div>
                 </div>`).join('')}
             <div class="sub-actions">
                 <button class="sub-btn" id="subCheckBtn">我已支付，立即检查</button>
@@ -4553,6 +4739,33 @@ function renderSubPanel() {
             if (!p) return;
             if (p.url) openExternal(p.url);
             else alertDialog('提示', '支付链接已失效，请重新下单。');
+        };
+    });
+
+    // 删除未支付订单
+    panel.querySelectorAll('[data-cancel]').forEach(btn => {
+        btn.onclick = async () => {
+            const customId = btn.getAttribute('data-cancel');
+            const p = (subState.unpaid || []).find(x => x.customId === customId);
+            const ok = await confirmDialog(
+                '删除订单',
+                '确定删除这笔未支付订单吗？\n\n' +
+                (p ? p.planName + ' · ' + p.months + ' 个月\n关联码 ' + p.customId + '\n\n' : '') +
+                '删除后不再显示在列表里。如果你其实已经完成了付款，系统仍然会凭关联码自动为你开通。',
+                { confirmText: '删除', danger: true }
+            );
+            if (!ok) return;
+            const label = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '删除中…';
+            try {
+                const d = await apiSubCancel(customId);
+                if (d.state) applySubState(d.state);
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = label;
+                alertDialog('删除失败', e.message || '请稍后重试');
+            }
         };
     });
     const errLink = panel.querySelector('#subErrDetail');
@@ -5094,30 +5307,33 @@ async function loadWaline() {
 
 /* =========================================================================
  * 30. 启动
+ * -------------------------------------------------------------------------
+ * 必须先登录：先渲染好 App 骨架（不可见），同时校验会话；
+ * 会话有效 → 播放退场动画进入 App；否则 → 登录门升起表单等用户登录。
  * ========================================================================= */
 updateModeSwitchUI();
 updateSyncButtonVisibility();
 renderView();
+if (appShellEl) appShellEl.classList.add('gone');
 
 (async () => {
-    // 预热题库
-    for (const b of BANKS) {
-        if (!b.ready) continue;
-        try { await ensureBankLoaded(b.id); } catch (e) {}
+    let user = null;
+    try {
+        user = await fetchUserInfo();
+    } catch (e) {
+        user = getCurrentUser();
     }
 
-    // 尝试恢复登录状态并刷新用户信息
-    const cachedUser = getCurrentUser();
-    if (cachedUser) {
-        fetchUserInfo().then(() => {
-            if (state.view === 'profile') renderProfile();
-        });
+    if (user) {
+        enterApp();
+    } else {
+        // 稍作停顿，让 logo + 三个脉冲点的启动动画播完，再升起登录表单
+        setTimeout(() => {
+            gateEl.classList.add('login');
+            layoutAuthGate();
+            if (gateEmailEl) gateEmailEl.focus();
+        }, 520);
     }
-
-    // 尝试上传 outbox（如果有登录）
-    if (getCurrentUser()) uploadOutbox();
-
-    if (state.view === 'home') renderHome();
 })();
 </script>
 </body>

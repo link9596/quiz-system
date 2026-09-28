@@ -87,15 +87,28 @@ function orderPaidTime(order) {
     return 0;
 }
 
+/** 可以被爱发电订单关联的待处理订单状态：pending = 列表里还在，canceled = 用户已从列表删除 */
+const LINKABLE_STATUSES = ['pending', 'canceled'];
+
+/** 用户删掉的订单仍会核对一段时间，避免「删除后才付款」被漏掉 */
+const CANCELED_TTL = 3 * 86400;
+
 function isPaid(order) {
     return Number(order && order.status) === ORDER_STATUS_PAID;
 }
 
-async function loadPendingByCustomId(env, customId) {
+/**
+ * 按关联码查待处理订单。
+ * statuses 默认只认 pending；核对订单时会额外带上 canceled，
+ * 这样即使用户在付款前把订单从列表里删掉了，事后付款仍能自动开通。
+ */
+async function loadPendingByCustomId(env, customId, statuses = ['pending']) {
     if (!customId) return null;
+    const list = statuses.length ? statuses : ['pending'];
+    const placeholders = list.map((_, i) => '?' + (i + 2)).join(', ');
     return env.DB.prepare(
-        "SELECT * FROM pending_orders WHERE custom_id = ? AND status = 'pending'"
-    ).bind(customId).first();
+        `SELECT * FROM pending_orders WHERE custom_id = ?1 AND status IN (${placeholders})`
+    ).bind(customId, ...list).first();
 }
 
 /**
@@ -106,12 +119,12 @@ async function loadPendingByCustomId(env, customId) {
  */
 async function resolvePendingOrder(env, order) {
     const customId = orderCustomId(order);
-    let row = await loadPendingByCustomId(env, customId);
+    let row = await loadPendingByCustomId(env, customId, LINKABLE_STATUSES);
     if (row) return { pending: row, via: 'custom_order_id' };
 
     const remark = sanitizeCustomId(order && order.remark);
     if (remark && remark !== customId) {
-        row = await loadPendingByCustomId(env, remark);
+        row = await loadPendingByCustomId(env, remark, LINKABLE_STATUSES);
         if (row) return { pending: row, via: 'remark' };
     }
 
@@ -209,7 +222,7 @@ export async function applyPaidOrder(env, order, source = 'afdian_api', options 
     let pending = null;
     let via = null;
     if (options.pendingCustomId) {
-        pending = await loadPendingByCustomId(env, options.pendingCustomId);
+        pending = await loadPendingByCustomId(env, options.pendingCustomId, LINKABLE_STATUSES);
         via = 'assigned';
     }
     if (!pending) {
@@ -319,9 +332,11 @@ async function markCheckOk(env, pendingList) {
 async function pendingListOf(env, userId) {
     const res = await env.DB.prepare(
         `SELECT * FROM pending_orders
-          WHERE user_id = ? AND status = 'pending' AND created_at > ?
+          WHERE user_id = ?
+            AND ( (status = 'pending'  AND created_at > ?2)
+               OR (status = 'canceled' AND created_at > ?3) )
           ORDER BY created_at ASC LIMIT 20`
-    ).bind(userId, nowSec() - PENDING_TTL).all();
+    ).bind(userId, nowSec() - PENDING_TTL, nowSec() - CANCELED_TTL).all();
     return res.results || [];
 }
 
@@ -384,6 +399,9 @@ export async function syncUserOrders(env, userId, options = {}) {
     // 第二轮（可选）：无关联码的已支付订单，按套餐兜底认领
     if (fallbackEnabled(env) && remained.length) {
         for (const p of remained) {
+            // 用户已从列表删除的订单只能靠精确关联码认领，不参与按套餐兜底，
+            // 否则可能把别人的订单误开给这个账号
+            if (p.status !== 'pending') continue;
             const cand = paid.find(o => {
                 const no = orderNoOf(o);
                 if (!no || usedOrders.has(no)) return false;
@@ -416,8 +434,10 @@ export async function sweepAllOrders(env) {
 
     const pending = (await env.DB.prepare(
         `SELECT custom_id, user_id FROM pending_orders
-          WHERE status = 'pending' AND created_at > ? ORDER BY created_at ASC LIMIT 200`
-    ).bind(now - PENDING_TTL).all()).results || [];
+          WHERE (status = 'pending'  AND created_at > ?1)
+             OR (status = 'canceled' AND created_at > ?2)
+          ORDER BY created_at ASC LIMIT 200`
+    ).bind(now - PENDING_TTL, now - CANCELED_TTL).all()).results || [];
 
     if (!pending.length) return result;
     if (!isAfdianConfigured(env)) { result.code = 'not_configured'; return result; }
@@ -493,6 +513,40 @@ export async function bindOrderByNo(env, userId, orderNo) {
         return { ok: false, code: 'unlinked', message: '请先在「续约」里生成该套餐的订单，再绑定订单号' };
     }
     return { ok: false, code: res.code, message: '绑定失败，请联系客服' };
+}
+
+// ---------------------------------------------------------------------------
+// 删除未支付订单
+// ---------------------------------------------------------------------------
+
+/**
+ * 「删除」一笔还没付款的待支付订单。
+ *
+ * 采用软删除（status = 'canceled'）而不是物理删除：
+ *   · 列表与状态接口只展示 status = 'pending'，用户看到的效果就是删掉了；
+ *   · 若用户其实已经付过款，事后核对订单时仍能凭 custom_order_id 关联并自动开通
+ *     （见 LINKABLE_STATUSES），不会出现「付了钱却没开通」。
+ */
+export async function cancelPendingOrder(env, userId, customId) {
+    const id = sanitizeCustomId(customId);
+    if (!id) return { ok: false, code: 'bad_input', message: '缺少订单标识' };
+
+    const row = await env.DB.prepare(
+        "SELECT custom_id, plan_key, afdian_order FROM pending_orders " +
+        "WHERE custom_id = ? AND user_id = ? AND status = 'pending'"
+    ).bind(id, userId).first();
+
+    if (!row) return { ok: false, code: 'not_found', message: '订单不存在或已被处理' };
+
+    const now = nowSec();
+    await env.DB.prepare(
+        "UPDATE pending_orders SET status = 'canceled', updated_at = ?1 " +
+        "WHERE custom_id = ?2 AND user_id = ?3 AND status = 'pending'"
+    ).bind(now, id, userId).run();
+
+    await logEvent(env, userId, 'cancel_order', JSON.stringify({ customId: id, plan: row.plan_key }));
+
+    return { ok: true, code: 'canceled', customId: id };
 }
 
 // ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ const afdian = stubAfdian();
 
 const {
     createPendingOrder, applyPaidOrder, syncUserOrders, getSubscriptionState,
-    activateGroup, bindOrderByNo, sweepAllOrders, publicPlanCatalog
+    activateGroup, bindOrderByNo, sweepAllOrders, publicPlanCatalog, cancelPendingOrder
 } = await import('../src/subscription.js');
 const { buildOrderUrl, buildSignedBody, getAfdianConfig } = await import('../src/afdian-api.js');
 const { md5 } = await import('../src/md5.js');
@@ -268,6 +268,44 @@ console.log('\n[10] 兜底匹配与节流');
     check('20 秒内重复查询被节流', thr.code === 'throttled', thr);
     const none = await syncUserOrders(env3, 'nobody', { force: true });
     check('无待支付订单返回 nothing_pending', none.code === 'nothing_pending', none);
+}
+
+console.log('\n[11] 删除未支付订单');
+{
+    const env = makeEnv();
+    const uid = 'user-13';
+    const o = await createPendingOrder(env, uid, 'k1', {});
+    let s = await getSubscriptionState(env, uid);
+    check('下单后出现在待支付列表', s.unpaid.length === 1, s.unpaid.length);
+
+    const bad = await cancelPendingOrder(env, 'someone-else', o.customId);
+    check('不能删除他人订单', !bad.ok && bad.code === 'not_found', bad);
+
+    const r = await cancelPendingOrder(env, uid, o.customId);
+    check('本人可以删除订单', r.ok && r.code === 'canceled', r);
+
+    s = await getSubscriptionState(env, uid);
+    check('删除后不再出现在待支付列表', s.unpaid.length === 0, s.unpaid);
+    check('删除后状态回到 inactive', s.status === 'inactive', s.status);
+
+    const again = await cancelPendingOrder(env, uid, o.customId);
+    check('重复删除返回 not_found', !again.ok && again.code === 'not_found', again);
+
+    // 关键：删掉之后才去付款，仍然必须能自动开通
+    afdian.orders = [{ out_trade_no: 'ORD-CANCEL', custom_order_id: o.customId, plan_id: 'plan-k1', month: 1, status: 2 }];
+    const sync = await syncUserOrders(env, uid, { force: true });
+    check('删除后付款仍能被核对到', sync.code === 'synced', sync);
+    s = await getSubscriptionState(env, uid);
+    check('删除后付款仍然自动开通', !!s.subjects.k1, s.subjects);
+    check('开通后不再残留待支付订单', s.unpaid.length === 0, s.unpaid);
+
+    // 删除的订单不参与「按套餐兜底匹配」，避免误领
+    const env2 = makeEnv({ AFDIAN_FALLBACK_MATCH: '1' });
+    const o2 = await createPendingOrder(env2, 'user-14', 'k1', {});
+    await cancelPendingOrder(env2, 'user-14', o2.customId);
+    afdian.orders = [{ out_trade_no: 'ORD-UNRELATED', custom_order_id: '', plan_id: 'plan-k1', month: 1, status: 2 }];
+    const s2 = await syncUserOrders(env2, 'user-14', { force: true });
+    check('已删除订单不参与兜底认领', s2.code === 'not_found', s2);
 }
 
 process.exit(summary() ? 1 : 0);

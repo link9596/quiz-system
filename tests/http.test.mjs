@@ -128,6 +128,35 @@ console.log('\n[F] 开通失败提示与手动绑定');
     check('非法订单号被拒', (await post('/api/subscription/bind', { orderNo: '!!' })).data.code === 'bad_input');
 }
 
+console.log('\n[F2] 删除未支付订单');
+{
+    const c = await post('/api/subscription/create', { plan: 'k1', activateMode: 'immediate' });
+    let st = await call('/api/subscription/state');
+    check('下单后出现在待支付列表', st.data.state.unpaid.length >= 1, st.data.state.unpaid.length);
+
+    const bad = await post('/api/subscription/cancel', {});
+    check('缺少参数返回 400', bad.status === 400 && bad.data.code === 'bad_input', bad.data);
+
+    const nf = await post('/api/subscription/cancel', { customId: 'TK-NOTEXIST000' });
+    check('不存在的订单返回 404', nf.status === 404 && nf.data.code === 'not_found', nf.data);
+    check('失败响应带会员编号（便于联系客服）', nf.data.memberNo === userId, nf.data.memberNo);
+
+    const ok = await post('/api/subscription/cancel', { customId: c.data.customId });
+    check('删除成功并回传最新状态', ok.status === 200 && ok.data.ok, ok.data);
+    check('删除后待支付列表不再包含该订单',
+        !(ok.data.state.unpaid || []).some(p => p.customId === c.data.customId), ok.data.state.unpaid);
+
+    const again = await post('/api/subscription/cancel', { customId: c.data.customId });
+    check('重复删除返回 404', again.status === 404, again.data);
+
+    // 删除之后才付款，仍然要能自动开通
+    afdian.orders = [{ out_trade_no: '20250101HTTPCANCEL', custom_order_id: c.data.customId,
+        plan_id: 'plan-k1', month: 1, status: 2 }];
+    const ck = await post('/api/subscription/check', {});
+    check('删除后付款仍能自动开通', ck.data.ok && ck.data.code === 'synced', ck.data);
+    check('已开通科目一', !!ck.data.state.subjects.k1, ck.data.state.subjects);
+}
+
 console.log('\n[G] 定时任务（单触发器兼顾每日清理）');
 {
     // 单个 cron 名额：*/15 每 15 分钟跑一次，只有 UTC 03:00~03:14 那次做每日清理

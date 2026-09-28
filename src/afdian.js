@@ -5,13 +5,15 @@
 //   POST /api/subscription/create     生成待支付订单 + 爱发电下单链接
 //   GET  /api/subscription/state      当前订阅状态（含节流后的自动核对）
 //   POST /api/subscription/check      立即向爱发电核对订单（用户点“我已支付”）
-//   POST /api/subscription/activate   激活一笔“延迟激活”的权益
+//   POST /api/subscription/activate   激活一笔未激活权益
+//   POST /api/subscription/cancel     删除一笔未支付的待支付订单
 //   POST /api/subscription/bind       用爱发电订单号手动绑定（兜底）
 //
 // 开通链路只走爱发电开放平台 API 主动查询，不依赖 webhook。
 // ============================================================================
 
 import { jsonResponse, checkRateLimit } from './utils.js';
+import { cancelPendingOrder } from './subscription.js';
 import { requireAuth } from './auth.js';
 import { buildOrderUrl, isAfdianConfigured } from './afdian-api.js';
 import {
@@ -187,6 +189,26 @@ export async function handleSubscriptionActivate(request, env) {
     const activated = await activateGroup(env, g.session.userId, groupId);
     const state = await getSubscriptionState(env, g.session.userId);
     return jsonResponse({ ok: true, activated: activated.length, state });
+}
+
+// ---------------------------------------------------------------------------
+// 删除未支付订单
+// ---------------------------------------------------------------------------
+export async function handleSubscriptionCancel(request, env) {
+    if (request.method !== 'POST') return methodNotAllowed();
+
+    const g = await guard(request, env, 'sub-cancel');
+    if (g.error) return g.error;
+
+    const body = await readJson(request);
+    const res = await cancelPendingOrder(env, g.session.userId, body.customId);
+    if (!res.ok) {
+        const status = res.code === 'not_found' ? 404 : 400;
+        return jsonResponse({ ok: false, code: res.code, error: res.message, memberNo: g.session.userId }, status);
+    }
+
+    const state = await getSubscriptionState(env, g.session.userId);
+    return jsonResponse({ ok: true, code: res.code, customId: res.customId, state, ...supportPayload(env) });
 }
 
 

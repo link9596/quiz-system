@@ -8,6 +8,7 @@ import {
     handleSubscriptionState,
     handleSubscriptionCheck,
     handleSubscriptionActivate,
+    handleSubscriptionCancel,
     handleSubscriptionBind
 } from './afdian.js';
 import { sweepAllOrders } from './subscription.js';
@@ -40,6 +41,8 @@ export default {
                 response = await handleSubscriptionCheck(request, env);
             } else if (path === '/api/subscription/activate') {
                 response = await handleSubscriptionActivate(request, env);
+            } else if (path === '/api/subscription/cancel') {
+                response = await handleSubscriptionCancel(request, env);
             } else if (path === '/api/subscription/bind') {
                 response = await handleSubscriptionBind(request, env);
             } else if (path === '/api/health') {
