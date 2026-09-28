@@ -2,7 +2,10 @@
 //   node tests/migrate.test.mjs
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 let fail = 0;
 const check = (name, cond, extra) => {
@@ -10,10 +13,17 @@ const check = (name, cond, extra) => {
     else { fail++; console.log('  FAIL ' + name, extra === undefined ? '' : JSON.stringify(extra)); }
 };
 
-const oldSchema = execFileSync('git', ['show', 'HEAD:schema.sql'], { encoding: 'utf8' });
+// 旧结构用固定夹具，避免依赖 git 历史
+const oldSchema = readFileSync(join(HERE, 'fixtures', 'schema-old.sql'), 'utf8');
 const db = new DatabaseSync(':memory:');
 db.exec(oldSchema);
 
+// 夹具自检：必须真的是「旧」结构，否则后面的验证没有意义
+const oldCols = db.prepare('PRAGMA table_info(subscriptions)').all().map(r => r.name);
+if (!oldCols.includes('plan') || oldCols.includes('subject')) {
+    console.log('  FAIL 夹具 tests/fixtures/schema-old.sql 不是旧结构，测试无效');
+    process.exit(1);
+}
 // 造几条历史数据
 db.prepare("INSERT INTO users (id,email,password_hash,created_at,updated_at) VALUES ('u1','a@b.com','x',1,1)").run();
 db.prepare(`INSERT INTO subscriptions (id,user_id,plan,status,start_at,expire_at,afdian_order,created_at,updated_at)
@@ -33,7 +43,7 @@ check('新表 sub_events 存在', tables.includes('sub_events'));
 check('临时表已清理', !tables.includes('subscriptions_old') && !tables.includes('pending_orders_old'), tables);
 
 const cols = db.prepare('PRAGMA table_info(subscriptions)').all().map(r => r.name);
-for (const c of ['group_id', 'subject', 'plan_key', 'months', 'activate_mode', 'activate_at', 'activated_at', 'afdian_plan_id', 'source']) {
+for (const c of ['group_id', 'subject', 'plan_key', 'months', 'activate_mode', 'activated_at', 'afdian_plan_id', 'source']) {
     check('subscriptions 新列 ' + c, cols.includes(c));
 }
 
@@ -59,7 +69,7 @@ db.prepare(`INSERT OR IGNORE INTO subscriptions
 check('唯一索引阻止重复授予', db.prepare("SELECT COUNT(*) c FROM subscriptions WHERE afdian_order='OLDORDER1' AND subject='k1'").get().c === 1);
 
 const pendCols = db.prepare('PRAGMA table_info(pending_orders)').all().map(r => r.name);
-for (const c of ['plan_key', 'plan_id', 'activate_mode', 'activate_at', 'status', 'check_count', 'last_error']) {
+for (const c of ['plan_key', 'plan_id', 'activate_mode', 'status', 'check_count', 'last_error']) {
     check('pending_orders 新列 ' + c, pendCols.includes(c));
 }
 

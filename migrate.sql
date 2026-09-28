@@ -33,7 +33,6 @@ CREATE TABLE subscriptions (
     start_at       INTEGER NOT NULL DEFAULT 0,
     expire_at      INTEGER NOT NULL DEFAULT 0,
     activate_mode  TEXT NOT NULL DEFAULT 'immediate',
-    activate_at    INTEGER,
     activated_at   INTEGER,
     afdian_order   TEXT,
     afdian_plan_id TEXT,
@@ -46,7 +45,7 @@ CREATE UNIQUE INDEX idx_sub_order_subject ON subscriptions(afdian_order, subject
 CREATE INDEX idx_sub_user    ON subscriptions(user_id, status);
 CREATE INDEX idx_sub_subject ON subscriptions(user_id, subject);
 CREATE INDEX idx_sub_expire  ON subscriptions(expire_at);
-CREATE INDEX idx_sub_pending ON subscriptions(status, activate_at);
+CREATE INDEX idx_sub_status  ON subscriptions(status);
 CREATE INDEX idx_sub_group   ON subscriptions(group_id);
 
 CREATE TABLE pending_orders (
@@ -56,7 +55,6 @@ CREATE TABLE pending_orders (
     plan_id       TEXT,
     months        INTEGER NOT NULL DEFAULT 1,
     activate_mode TEXT NOT NULL DEFAULT 'immediate',
-    activate_at   INTEGER,
     status        TEXT NOT NULL DEFAULT 'pending',
     afdian_order  TEXT,
     amount        TEXT,
@@ -82,23 +80,23 @@ CREATE INDEX IF NOT EXISTS idx_sub_events_user ON sub_events(user_id, created_at
 -- 旧模型没有科目概念（plan = pro_month / pro_year），按「全科」迁移成两行。
 INSERT INTO subscriptions
     (id, user_id, group_id, subject, plan_key, plan_name, months, status,
-     start_at, expire_at, activate_mode, activate_at, activated_at,
+     start_at, expire_at, activate_mode, activated_at,
      afdian_order, afdian_plan_id, amount, source, created_at, updated_at)
 SELECT
     id || '-k1', user_id, COALESCE(afdian_order, id), 'k1', 'k1k2', '历史订阅（迁移）', 1,
     CASE status WHEN 'active' THEN 'active' WHEN 'expired' THEN 'expired' ELSE 'revoked' END,
-    start_at, expire_at, 'immediate', NULL, NULL,
+    start_at, expire_at, 'immediate', NULL,
     afdian_order, NULL, NULL, 'migrate', created_at, updated_at
 FROM subscriptions_old;
 
 INSERT INTO subscriptions
     (id, user_id, group_id, subject, plan_key, plan_name, months, status,
-     start_at, expire_at, activate_mode, activate_at, activated_at,
+     start_at, expire_at, activate_mode, activated_at,
      afdian_order, afdian_plan_id, amount, source, created_at, updated_at)
 SELECT
     id || '-k2', user_id, COALESCE(afdian_order, id), 'k2', 'k1k2', '历史订阅（迁移）', 1,
     CASE status WHEN 'active' THEN 'active' WHEN 'expired' THEN 'expired' ELSE 'revoked' END,
-    start_at, expire_at, 'immediate', NULL, NULL,
+    start_at, expire_at, 'immediate', NULL,
     afdian_order, NULL, NULL, 'migrate', created_at, updated_at
 FROM subscriptions_old;
 

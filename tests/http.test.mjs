@@ -53,7 +53,7 @@ let userId = '';
     check('未登录访问订阅状态 401', (await raw('/api/subscription/state')).status === 401);
     check('未登录核对订单 401', (await raw('/api/subscription/check', { method: 'POST' })).status === 401);
     check('未登录下单 401', (await raw('/api/subscription/create', { method: 'POST' })).status === 401);
-    check('未登录改预约 401', (await raw('/api/subscription/schedule', { method: 'POST' })).status === 401);
+    check('未登录绑定订单 401', (await raw('/api/subscription/bind', { method: 'POST' })).status === 401);
 }
 
 console.log('\n[C] 套餐目录');
@@ -92,7 +92,7 @@ console.log('\n[D] 下单 -> 支付 -> 自动开通');
 
 console.log('\n[E] 延迟激活接口');
 {
-    const c = await post('/api/subscription/create', { plan: 'k2', activateMode: 'delayed', activateAt: Date.now() + 30 * 86400000 });
+    const c = await post('/api/subscription/create', { plan: 'k2', activateMode: 'delayed' });
     check('创建延迟激活订单', c.status === 200 && c.data.activateMode === 'delayed', c.data);
     afdian.orders.push({ out_trade_no: '20250101HTTP0002', custom_order_id: c.data.customId, plan_id: 'plan-k2', month: 1, status: 2 });
     const ck = await post('/api/subscription/check', {});
@@ -104,9 +104,8 @@ console.log('\n[E] 延迟激活接口');
     check('激活成功', act.status === 200 && act.data.activated === 1, act.data);
     check('激活后两科均开通', !!act.data.state.subjects.k1 && !!act.data.state.subjects.k2, act.data.state.subjects);
     check('重复激活返回 404', (await post('/api/subscription/activate', { groupId: gid })).status === 404);
-    check('对不存在的权益改预约 404', (await post('/api/subscription/schedule', { groupId: 'nope', activateAt: null })).status === 404);
+    check('已移除预约激活接口（404）', (await post('/api/subscription/schedule', {})).status === 404);
     check('缺少参数返回 400', (await post('/api/subscription/activate', {})).status === 400);
-    check('预约时间过早被拒', (await post('/api/subscription/schedule', { groupId: gid, activateAt: 1 })).status === 400);
 }
 
 console.log('\n[F] 开通失败提示与手动绑定');
@@ -129,10 +128,34 @@ console.log('\n[F] 开通失败提示与手动绑定');
     check('非法订单号被拒', (await post('/api/subscription/bind', { orderNo: '!!' })).data.code === 'bad_input');
 }
 
-console.log('\n[G] 定时任务');
+console.log('\n[G] 定时任务（单触发器兼顾每日清理）');
 {
-    await worker.scheduled({}, env, {});
-    check('scheduled 正常执行', true);
+    // 单个 cron 名额：*/15 每 15 分钟跑一次，只有 UTC 03:00~03:14 那次做每日清理
+    const ctl = await post('/api/subscription/create', { plan: 'k1k2', activateMode: 'immediate' });
+    afdian.orders = [{
+        out_trade_no: '20250101CRON0001', custom_order_id: ctl.data.customId,
+        plan_id: 'plan-k1k2', month: 1, status: 2
+    }];
+
+    const atNoon = Date.UTC(2025, 0, 15, 12, 0, 0);
+    await worker.scheduled({ scheduledTime: atNoon, cron: '*/15 * * * *' }, env, {});
+    const afterNoon = await call('/api/subscription/state');
+    check('非清理时段也照常核对订单并开通', afterNoon.data.state.status === 'active', afterNoon.data.state.status);
+
+    // 造一条过期 session，验证只有 03:0x 那次才清理
+    env._sqlite.prepare("INSERT INTO sessions (token_hash,user_id,expires_at,created_at) VALUES ('deadbeef','x',1,1)").run();
+    const sessionsBefore = env._sqlite.prepare('SELECT COUNT(*) c FROM sessions').get().c;
+
+    await worker.scheduled({ scheduledTime: atNoon, cron: '*/15 * * * *' }, env, {});
+    check('非清理时段不删过期 session',
+        env._sqlite.prepare('SELECT COUNT(*) c FROM sessions').get().c === sessionsBefore, sessionsBefore);
+
+    const at3am = Date.UTC(2025, 0, 15, 3, 5, 0);
+    await worker.scheduled({ scheduledTime: at3am, cron: '*/15 * * * *' }, env, {});
+    check('UTC 03:0x 那次执行每日清理（删除过期 session）',
+        env._sqlite.prepare("SELECT COUNT(*) c FROM sessions WHERE token_hash='deadbeef'").get().c === 0);
+
+    check('缺少 scheduledTime 时不抛异常', await worker.scheduled({}, env, {}).then(() => true, () => false));
 }
 
 console.log('\n[H] 退出登录');

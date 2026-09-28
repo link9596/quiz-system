@@ -792,8 +792,8 @@ html.light-theme .sub-card {
 }
 .sub-alert .sa-icon { flex-shrink: 0; }
 
-/* ================= 购买 / 激活 / 客服 弹窗 ================= */
-.purchase-dialog, .activate-dialog, .support-dialog {
+/* ================= 购买 / 客服 弹窗 ================= */
+.purchase-dialog, .support-dialog {
     width: 100%; max-width: 420px; max-height: 88vh; overflow-y: auto;
     background-color: var(--card-bg); border-radius: 16px;
     padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,.45);
@@ -801,7 +801,6 @@ html.light-theme .sub-card {
     border: 1px solid var(--border-color);
 }
 .dialog-overlay.show .purchase-dialog,
-.dialog-overlay.show .activate-dialog,
 .dialog-overlay.show .support-dialog { transform: scale(1); }
 .pd-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .pd-title { font-size: 16px; font-weight: 800; flex: 1; }
@@ -853,14 +852,6 @@ html.light-theme .sub-card {
 .act-option.active .ao-radio::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent-blue); }
 .ao-title { font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
 .ao-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
-.pd-date {
-    width: 100%; margin-top: 4px; padding: 11px 13px; border-radius: 10px;
-    background: var(--input-bg); border: 1px solid var(--input-border);
-    color: var(--text-primary); font-size: 14px; font-family: inherit; outline: none;
-    color-scheme: dark;
-}
-html.light-theme .pd-date { color-scheme: light; }
-.pd-date:focus { border-color: var(--accent-blue); }
 .pd-hint {
     font-size: 11.5px; color: var(--text-secondary); line-height: 1.7;
     margin-top: 8px; padding: 10px 12px; border-radius: 10px;
@@ -1542,17 +1533,6 @@ html.light-theme .pd-date { color-scheme: light; }
     </div>
 </div>
 
-<!-- ============ 激活待生效权益 ============ -->
-<div class="dialog-overlay" id="activateOverlay">
-    <div class="activate-dialog">
-        <div class="pd-head">
-            <div class="pd-title">激活权益</div>
-            <button class="pd-close" id="adCloseBtn">&times;</button>
-        </div>
-        <div id="adBody"></div>
-        <div class="pd-foot" id="adFoot"></div>
-    </div>
-</div>
 
 <!-- ============ 开通失败 / 联系客服 ============ -->
 <div class="dialog-overlay" id="supportOverlay">
@@ -4227,7 +4207,6 @@ let subPollTimer = null;    // 支付等待轮询
 let subErrorShown = false;  // 本次会话只自动弹一次开通失败提示
 let subLoading = false;
 let pdState = null;         // 购买弹窗状态
-let adState = null;         // 激活弹窗状态
 
 /* ---------------- 接口 ---------------- */
 async function subApi(path, options) {
@@ -4242,10 +4221,9 @@ function subPost(path, body) {
 }
 const apiSubState = () => subApi('/state');
 const apiSubPlans = () => subApi('/plans');
-const apiSubCreate = (plan, activateMode, activateAt) => subPost('/create', { plan, activateMode, activateAt });
+const apiSubCreate = (plan, activateMode) => subPost('/create', { plan, activateMode });
 const apiSubCheck = () => subPost('/check', {});
 const apiSubActivate = (groupId) => subPost('/activate', { groupId });
-const apiSubSchedule = (groupId, activateAt) => subPost('/schedule', { groupId, activateAt });
 const apiSubBind = (orderNo) => subPost('/bind', { orderNo });
 
 /* ---------------- 展示工具 ---------------- */
@@ -4255,14 +4233,6 @@ function formatDay(ms) {
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
 }
 function formatDateTime(ms) { return ms ? formatDate(ms) : '—'; }
-function toDateInput(ms) { return formatDay(ms); }
-function fromDateInput(v) {
-    if (!v) return null;
-    const parts = String(v).split('-').map(Number);
-    if (parts.length !== 3 || parts.some(n => !isFinite(n))) return null;
-    // 预约当天 00:00 生效
-    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0).getTime();
-}
 function formatMemberNo(id) {
     const raw = String(id || '').replace(/[^0-9a-zA-Z]/g, '').toUpperCase();
     if (!raw) return '—';
@@ -4458,7 +4428,7 @@ function renderSubPanel() {
                         <div class="sub-item-title">${escapeHtml(p.planName)} · ${p.months} 个月</div>
                         <div class="sub-item-meta">
                             支付时间 ${formatDateTime(p.paidAt)}${p.orderNo ? ' · 订单 ' + escapeHtml(p.orderNo) : ''}<br>
-                            ${p.activateAt ? '预约激活：' + formatDateTime(p.activateAt) : '未预约时间，可随时手动激活'}
+                            可随时点击「激活」自行选择生效时机（若当前会员未到期，会自动顺延叠加）
                         </div>
                     </div>
                     <button class="sub-item-btn" data-activate="${escapeHtml(p.groupId)}">激活</button>
@@ -4485,7 +4455,7 @@ function renderSubPanel() {
                         <div class="sub-item-title">${escapeHtml(p.planName)} · ${p.months} 个月</div>
                         <div class="sub-item-meta">
                             下单于 ${formatDateTime(p.createdAt)} · 关联码 ${escapeHtml(p.customId)}<br>
-                            ${p.activateMode === 'delayed' ? (p.activateAt ? '付款后预约激活：' + formatDateTime(p.activateAt) : '付款后暂不激活，稍后手动激活') : '付款后立即生效'}
+                            ${p.activateMode === 'delayed' ? '付款后暂不激活，可自行选择时机激活' : '付款后立即生效'}
                         </div>
                     </div>
                     <button class="sub-item-btn ghost" data-pay="${escapeHtml(p.customId)}">继续支付</button>
@@ -4575,7 +4545,7 @@ function renderSubPanel() {
     }
 
     panel.querySelectorAll('[data-activate]').forEach(btn => {
-        btn.onclick = () => openActivateDialog(btn.getAttribute('data-activate'));
+        btn.onclick = () => activateOwnedGroup(btn.getAttribute('data-activate'), btn);
     });
     panel.querySelectorAll('[data-pay]').forEach(btn => {
         btn.onclick = () => {
@@ -4674,7 +4644,7 @@ async function openPurchaseDialog() {
     const overlay = document.getElementById('purchaseOverlay');
     if (!overlay) return;
     stopSubPolling();
-    pdState = { step: 'choose', plan: null, mode: 'immediate', date: '', noDate: false, busy: false, pollCount: 0, before: subState };
+    pdState = { step: 'choose', plan: null, mode: 'immediate', busy: false, pollCount: 0, before: subState };
     overlay.classList.add('show');
 
     const body = document.getElementById('pdBody');
@@ -4708,8 +4678,6 @@ async function openPurchaseDialog() {
     const fallback = subPlans.find(p => p.key === 'k1k2') || subPlans[0];
     pdState.plan = active && subPlans.some(p => p.key === active) ? active : fallback.key;
 
-    const baseExpire = subState && subState.expireAt && subState.expireAt > Date.now() ? subState.expireAt : Date.now();
-    pdState.date = toDateInput(baseExpire);
 
     renderPurchaseStep();
 }
@@ -4730,8 +4698,6 @@ function renderPurchaseStep() {
     if (pdState.step === 'done') return renderPurchaseDone();
 
     const mode = pdState.mode;
-    const dateValue = pdState.date || toDateInput(Date.now());
-    const minDate = toDateInput(Date.now());
 
     body.innerHTML = `
         <div class="pd-label">选择套餐</div>
@@ -4757,20 +4723,9 @@ function renderPurchaseStep() {
             <div class="ao-radio"></div>
             <div>
                 <div class="ao-title">延迟激活</div>
-                <div class="ao-desc">付款后先存在卡片上显示「已有未激活」，可预约时间自动生效，也可稍后随时手动激活。</div>
+                <div class="ao-desc">付款后先存进卡片显示「已有未激活」，你可以随时自己选择时机激活。</div>
             </div>
         </div>
-
-        ${mode === 'delayed' ? `
-            <div class="pd-label">激活时间</div>
-            <input type="date" class="pd-date" id="pdDate" min="${minDate}" value="${dateValue}" ${pdState.noDate ? 'disabled' : ''}>
-            <label class="act-option ${pdState.noDate ? 'active' : ''}" id="pdNoDateLabel" style="margin-top:9px;">
-                <input type="checkbox" id="pdNoDate" ${pdState.noDate ? 'checked' : ''} style="margin-top:3px;">
-                <div>
-                    <div class="ao-title">暂不指定时间</div>
-                    <div class="ao-desc">付款后一直保留为「未激活」，需要时再点卡片上的「激活」。</div>
-                </div>
-            </label>` : ''}
 
         <div class="pd-hint">
             前往爱发电完成支付，系统会自动查询订单并开通，无需回来手动操作。<br>
@@ -4783,32 +4738,16 @@ function renderPurchaseStep() {
 
     body.querySelectorAll('[data-plan]').forEach(el => {
         el.onclick = () => {
-            if (pdState.mode === 'delayed') {
-                const di = document.getElementById('pdDate');
-                if (di && !pdState.noDate) pdState.date = di.value;
-            }
             pdState.plan = el.getAttribute('data-plan');
             renderPurchaseStep();
         };
     });
     body.querySelectorAll('[data-mode]').forEach(el => {
         el.onclick = () => {
-            const di = document.getElementById('pdDate');
-            if (di && !pdState.noDate) pdState.date = di.value;
             pdState.mode = el.getAttribute('data-mode');
             renderPurchaseStep();
         };
     });
-    const dateInput = body.querySelector('#pdDate');
-    if (dateInput) dateInput.onchange = () => { pdState.date = dateInput.value; };
-    const noDate = body.querySelector('#pdNoDate');
-    if (noDate) {
-        noDate.onchange = () => {
-            if (dateInput && !pdState.noDate) pdState.date = dateInput.value;
-            pdState.noDate = noDate.checked;
-            renderPurchaseStep();
-        };
-    }
     foot.querySelector('#pdCancel').onclick = closePurchaseDialog;
     foot.querySelector('#pdConfirm').onclick = createOrderAndPay;
 }
@@ -4816,22 +4755,13 @@ function renderPurchaseStep() {
 async function createOrderAndPay() {
     if (!pdState || pdState.busy) return;
     const btn = document.getElementById('pdConfirm');
-    if (pdState.mode === 'delayed' && !pdState.noDate) {
-        const di = document.getElementById('pdDate');
-        if (di) pdState.date = di.value;
-        if (!pdState.date) { alertDialog('提示', '请选择预约激活时间，或勾选「暂不指定时间」'); return; }
-    }
     pdState.busy = true;
     if (btn) { btn.disabled = true; btn.textContent = '正在创建订单…'; }
 
     const activateMode = pdState.mode === 'delayed' ? 'delayed' : 'immediate';
-    let activateAt = null;
-    if (activateMode === 'delayed' && !pdState.noDate) {
-        activateAt = fromDateInput(pdState.date);
-    }
 
     try {
-        const d = await apiSubCreate(pdState.plan, activateMode, activateAt);
+        const d = await apiSubCreate(pdState.plan, activateMode);
         if (!d.ok) throw new Error(d.error || '创建订单失败');
         pdState.customId = d.customId;
         pdState.url = d.url;
@@ -4855,9 +4785,7 @@ function renderPurchaseWait() {
     const body = document.getElementById('pdBody');
     const foot = document.getElementById('pdFoot');
     const modeText = pdState.planInfo
-        ? (pdState.mode === 'delayed'
-            ? (pdState.noDate ? '付款后暂不激活（稍后手动激活）' : '付款后预约 ' + pdState.date + ' 激活')
-            : '付款后立即生效')
+        ? (pdState.mode === 'delayed' ? '付款后暂不激活，可自行选择时机激活' : '付款后立即生效')
         : '';
 
     body.innerHTML = `
@@ -4978,114 +4906,31 @@ async function checkPayment(quiet) {
     return d;
 }
 
-/* ---------------- 激活弹窗 ---------------- */
-function openActivateDialog(groupId) {
-    const overlay = document.getElementById('activateOverlay');
-    if (!overlay) return;
-    const item = (subState && subState.pending || []).find(p => p.groupId === groupId);
-    if (!item) return;
+/* ---------------- 激活权益（无预约，用户自行决定生效时机） ---------------- */
+async function activateOwnedGroup(groupId, btn) {
+    const item = ((subState && subState.pending) || []).find(p => p.groupId === groupId);
+    const desc = item
+        ? item.planName + ' · ' + item.months + ' 个月\n支付时间：' + formatDateTime(item.paidAt) +
+          (item.orderNo ? '\n订单号：' + item.orderNo : '')
+        : '';
+    const ok = await confirmDialog(
+        '激活权益',
+        desc + '\n\n激活后立即开始计算时长。若当前会员还未到期，会自动从到期日往后叠加，不会浪费剩余时长。',
+        { confirmText: '立即激活' }
+    );
+    if (!ok) return;
 
-    const baseExpire = subState.expireAt && subState.expireAt > Date.now() ? subState.expireAt : Date.now();
-    adState = {
-        groupId,
-        item,
-        mode: item.activateAt ? 'at' : 'now',
-        date: toDateInput(item.activateAt || baseExpire),
-        busy: false
-    };
-    overlay.classList.add('show');
-    renderActivateDialog();
+    const label = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '激活中…'; }
+    try {
+        const d = await apiSubActivate(groupId);
+        if (d.state) applySubState(d.state);
+        await alertDialog('激活成功', '权益已生效，可在会员卡上查看新的到期时间。');
+    } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = label || '激活'; }
+        alertDialog('激活失败', e.message || '请稍后重试');
+    }
 }
-
-function closeActivateDialog() {
-    const overlay = document.getElementById('activateOverlay');
-    if (overlay) overlay.classList.remove('show');
-    adState = null;
-}
-
-function renderActivateDialog() {
-    const body = document.getElementById('adBody');
-    const foot = document.getElementById('adFoot');
-    if (!body || !foot || !adState) return;
-    const it = adState.item;
-    const minDate = toDateInput(Date.now());
-
-    body.innerHTML = `
-        <div class="pd-hint" style="margin-top:0;">
-            <b>${escapeHtml(it.planName)}</b> · ${it.months} 个月<br>
-            支付时间 ${formatDateTime(it.paidAt)}${it.orderNo ? ' · 订单 ' + escapeHtml(it.orderNo) : ''}
-        </div>
-        <div class="pd-label">选择激活时间</div>
-        <div class="act-option ${adState.mode === 'now' ? 'active' : ''}" data-amode="now">
-            <div class="ao-radio"></div>
-            <div>
-                <div class="ao-title">立即激活</div>
-                <div class="ao-desc">从现在开始计算；若当前会员未到期，自动从到期日往后叠加。</div>
-            </div>
-        </div>
-        <div class="act-option ${adState.mode === 'at' ? 'active' : ''}" data-amode="at">
-            <div class="ao-radio"></div>
-            <div>
-                <div class="ao-title">预约激活</div>
-                <div class="ao-desc">到指定日期自动生效，期间一直显示为「未激活」。</div>
-            </div>
-        </div>
-        <div class="act-option ${adState.mode === 'later' ? 'active' : ''}" data-amode="later">
-            <div class="ao-radio"></div>
-            <div>
-                <div class="ao-title">暂不激活</div>
-                <div class="ao-desc">保留在卡片上，需要时再手动激活。</div>
-            </div>
-        </div>
-        ${adState.mode === 'at' ? '<input type="date" class="pd-date" id="adDate" min="' + minDate + '" value="' + adState.date + '">' : ''}`;
-
-    foot.innerHTML = `
-        <button class="sub-btn ghost" id="adCancel">取消</button>
-        <button class="sub-btn primary" id="adConfirm">确定</button>`;
-
-    body.querySelectorAll('[data-amode]').forEach(el => {
-        el.onclick = () => {
-            const di = document.getElementById('adDate');
-            if (di) adState.date = di.value;
-            adState.mode = el.getAttribute('data-amode');
-            renderActivateDialog();
-        };
-    });
-    const di = body.querySelector('#adDate');
-    if (di) di.onchange = () => { adState.date = di.value; };
-
-    foot.querySelector('#adCancel').onclick = closeActivateDialog;
-    foot.querySelector('#adConfirm').onclick = async () => {
-        if (adState.busy) return;
-        const btn = foot.querySelector('#adConfirm');
-        if (adState.mode === 'at') {
-            const d2 = document.getElementById('adDate');
-            if (d2) adState.date = d2.value;
-            if (!adState.date) { alertDialog('提示', '请选择预约激活日期'); return; }
-        }
-        adState.busy = true;
-        btn.disabled = true;
-        btn.textContent = '处理中…';
-        try {
-            let d;
-            if (adState.mode === 'now') {
-                d = await apiSubActivate(adState.groupId);
-            } else if (adState.mode === 'at') {
-                d = await apiSubSchedule(adState.groupId, fromDateInput(adState.date));
-            } else {
-                d = await apiSubSchedule(adState.groupId, null);
-            }
-            if (d.state) applySubState(d.state);
-            closeActivateDialog();
-        } catch (e) {
-            adState.busy = false;
-            btn.disabled = false;
-            btn.textContent = '确定';
-            alertDialog('操作失败', e.message || '请稍后重试');
-        }
-    };
-}
-
 /* ---------------- 客服弹窗 ---------------- */
 function showSupportDialog(opts) {
     const overlay = document.getElementById('supportOverlay');
@@ -5176,12 +5021,6 @@ function initSubscriptionDialogs() {
         const close = document.getElementById('pdCloseBtn');
         if (close) close.onclick = closePurchaseDialog;
         pOverlay.onclick = (e) => { if (e.target === pOverlay) closePurchaseDialog(); };
-    }
-    const aOverlay = document.getElementById('activateOverlay');
-    if (aOverlay) {
-        const close = document.getElementById('adCloseBtn');
-        if (close) close.onclick = closeActivateDialog;
-        aOverlay.onclick = (e) => { if (e.target === aOverlay) closeActivateDialog(); };
     }
     initSupportDialog();
 }

@@ -136,7 +136,7 @@ async function resolvePendingOrder(env, order) {
 
 /**
  * 激活某一笔购买（group）下所有待激活的权益行。
- * 每一行按其所含科目单独计算：从「当前时间 / 预约时间 / 该科目已有到期时间」的较晚者起算。
+ * 每一行按其所含科目单独计算：从「当前时间 / 该科目已有到期时间」的较晚者起算。
  */
 export async function activateGroup(env, userId, groupId, now = nowSec()) {
     const rows = (await env.DB.prepare(
@@ -150,10 +150,8 @@ export async function activateGroup(env, userId, groupId, now = nowSec()) {
               WHERE user_id = ? AND subject = ? AND status = 'active' AND expire_at > ?`
         ).bind(userId, row.subject, now).first();
 
-        let start = Math.max(now, Number(current && current.m) || 0);
-        const scheduled = Number(row.activate_at) || 0;
-        if (scheduled > start) start = scheduled;
-
+        // 起算点 = max(当前时间, 该科目已有到期时间)，保证不吞掉用户已付费的时长
+        const start = Math.max(now, Number(current && current.m) || 0);
         const expire = addMonths(start, row.months || 1);
 
         const res = await env.DB.prepare(
@@ -172,22 +170,7 @@ export async function activateGroup(env, userId, groupId, now = nowSec()) {
     return activated;
 }
 
-/** 把到点的“预约激活”记录全部激活 */
-export async function activateDue(env, userId, now = nowSec()) {
-    const where = userId ? 'AND user_id = ?2' : '';
-    const stmt = env.DB.prepare(
-        `SELECT DISTINCT user_id, group_id FROM subscriptions
-          WHERE status = 'pending' AND activate_at IS NOT NULL AND activate_at <= ?1 ${where}`
-    );
-    const rows = (userId ? await stmt.bind(now, userId).all() : await stmt.bind(now).all()).results || [];
-
-    let count = 0;
-    for (const r of rows) {
-        const done = await activateGroup(env, r.user_id, r.group_id, now);
-        count += done.length;
-    }
-    return count;
-}
+/** 把已过期的权益行标记为 expired */
 
 /** 把已过期的权益行标记为 expired */
 export async function expireRecords(env, userId, now = nowSec()) {
@@ -251,22 +234,22 @@ export async function applyPaidOrder(env, order, source = 'afdian_api', options 
     const months = normalizeMonths(order && order.month, plan.months);
     const groupId = pending.custom_id;
     const amount = order && order.total_amount != null ? String(order.total_amount) : null;
+    // delayed = 付款后先存为「未激活」，由用户自行选择时机激活
     const mode = pending.activate_mode === 'delayed' ? 'delayed' : 'immediate';
-    const scheduledAt = Number(pending.activate_at) || null;
-    const immediate = mode === 'immediate' || (!!scheduledAt && scheduledAt <= now);
+    const immediate = mode === 'immediate';
 
     const statements = [];
     for (const subject of plan.subjects) {
         statements.push(env.DB.prepare(
             `INSERT OR IGNORE INTO subscriptions
                (id, user_id, group_id, subject, plan_key, plan_name, months, status,
-                start_at, expire_at, activate_mode, activate_at, activated_at,
+                start_at, expire_at, activate_mode, activated_at,
                 afdian_order, afdian_plan_id, amount, source, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending',
-                0, 0, ?8, ?9, NULL, ?10, ?11, ?12, ?13, ?14, ?14)`
+                0, 0, ?8, NULL, ?9, ?10, ?11, ?12, ?13, ?13)`
         ).bind(
             crypto.randomUUID(), pending.user_id, groupId, subject, plan.key, plan.name, months,
-            mode, scheduledAt, orderNo, String((order && order.plan_id) || plan.planId),
+            mode, orderNo, String((order && order.plan_id) || plan.planId),
             amount, source, now
         ));
     }
@@ -291,7 +274,7 @@ export async function applyPaidOrder(env, order, source = 'afdian_api', options 
     }
 
     await logEvent(env, pending.user_id, immediate ? 'grant' : 'grant_pending', JSON.stringify({
-        groupId, orderNo, plan: plan.key, months, via, source, mode, scheduledAt
+        groupId, orderNo, plan: plan.key, months, via, source, mode
     }));
 
     return {
@@ -423,14 +406,13 @@ export async function syncUserOrders(env, userId, options = {}) {
 }
 
 /**
- * 定时任务：全量核对最近订单，处理所有用户的未完成开通 + 到点激活 + 过期。
+ * 定时任务：全量核对最近订单，处理未完成开通 + 标记过期。
  */
 export async function sweepAllOrders(env) {
     const now = nowSec();
     const result = { activated: 0, expired: 0, linked: 0, code: 'ok' };
 
     result.expired = await expireRecords(env, null, now);
-    result.activated += await activateDue(env, null, now);
 
     const pending = (await env.DB.prepare(
         `SELECT custom_id, user_id FROM pending_orders
@@ -519,32 +501,27 @@ export async function bindOrderByNo(env, userId, orderNo) {
 
 /**
  * 创建待支付订单。
- * @param {{activateMode?: 'immediate'|'delayed', activateAt?: number}} options activateAt 为毫秒时间戳
+ * @param {{activateMode?: 'immediate'|'delayed'}} options
+ *        immediate = 付款后立即生效；delayed = 付款后保持「未激活」，由用户手动激活
  */
 export async function createPendingOrder(env, userId, planKey, options = {}) {
     const plan = planByKey(env, planKey);
     if (!plan) return { ok: false, code: 'unknown_plan' };
 
     const mode = options.activateMode === 'delayed' ? 'delayed' : 'immediate';
-    let activateAt = null;
-    if (mode === 'delayed') {
-        const ms = Number(options.activateAt);
-        activateAt = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : null;
-    }
-
     const customId = newCustomId();
     const now = nowSec();
 
     await env.DB.prepare(
         `INSERT INTO pending_orders
-           (custom_id, user_id, plan_key, plan_id, months, activate_mode, activate_at,
+           (custom_id, user_id, plan_key, plan_id, months, activate_mode,
             status, check_count, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending', 0, ?8, ?8)`
-    ).bind(customId, userId, plan.key, plan.planId, plan.months, mode, activateAt, now).run();
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'pending', 0, ?7, ?7)`
+    ).bind(customId, userId, plan.key, plan.planId, plan.months, mode, now).run();
 
-    await logEvent(env, userId, 'create_order', JSON.stringify({ customId, plan: plan.key, mode, activateAt }));
+    await logEvent(env, userId, 'create_order', JSON.stringify({ customId, plan: plan.key, mode }));
 
-    return { ok: true, customId, plan, activateMode: mode, activateAt };
+    return { ok: true, customId, plan, activateMode: mode };
 }
 
 // ---------------------------------------------------------------------------
@@ -597,7 +574,6 @@ function pendingView(env, p) {
         subjectLabel: plan ? subjectsLabel(plan.subjects) : '',
         months: p.months,
         activateMode: p.activate_mode,
-        activateAt: p.activate_at ? p.activate_at * 1000 : null,
         createdAt: p.created_at * 1000,
         checkCount: Number(p.check_count) || 0,
         lastError: p.last_error || null,
@@ -607,7 +583,7 @@ function pendingView(env, p) {
 
 async function loadUnpaidOrders(env, userId, now) {
     const res = await env.DB.prepare(
-        `SELECT custom_id, plan_key, months, activate_mode, activate_at, created_at, check_count, last_error
+        `SELECT custom_id, plan_key, months, activate_mode, created_at, check_count, last_error
            FROM pending_orders
           WHERE user_id = ? AND status = 'pending' AND created_at > ?
           ORDER BY created_at DESC LIMIT 10`
@@ -633,10 +609,9 @@ async function loadLastError(env, userId) {
 }
 
 /**
- * 计算用户当前的订阅状态（并顺带处理到点激活 / 过期标记）。
+ * 计算用户当前的订阅状态（并顺带标记已过期权益）。
  */
 export async function getSubscriptionState(env, userId, now = nowSec()) {
-    await activateDue(env, userId, now);
     await expireRecords(env, userId, now);
 
     const state = emptyState(env, userId);
@@ -647,7 +622,7 @@ export async function getSubscriptionState(env, userId, now = nowSec()) {
 
     const rows = (await env.DB.prepare(
         `SELECT id, group_id, subject, plan_key, plan_name, months, status, start_at, expire_at,
-                activate_mode, activate_at, activated_at, afdian_order, amount, source, created_at
+                activate_mode, activated_at, afdian_order, amount, source, created_at
            FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`
     ).bind(userId).all()).results || [];
 
@@ -709,7 +684,6 @@ export async function getSubscriptionState(env, userId, now = nowSec()) {
         subjectLabel: subjectsLabel(list.map(r => r.subject)),
         months: list[0].months,
         activateMode: list[0].activate_mode,
-        activateAt: list[0].activate_at ? list[0].activate_at * 1000 : null,
         paidAt: list[0].created_at * 1000,
         orderNo: list[0].afdian_order,
         amount: list[0].amount,

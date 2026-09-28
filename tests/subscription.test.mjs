@@ -87,7 +87,7 @@ console.log('\n[3] 叠加续费：从当前到期时间继续');
     check('activeGroups 分为 2 组', s2.activeGroups.length === 2, s2.activeGroups.length);
 }
 
-console.log('\n[4] 延迟激活：预约时间 / 手动激活');
+console.log('\n[4] 延迟激活：付款后先存为「未激活」，由用户自行激活');
 {
     const env = makeEnv();
     const uid = 'user-3';
@@ -96,45 +96,49 @@ console.log('\n[4] 延迟激活：预约时间 / 手动激活');
     await syncUserOrders(env, uid, { force: true });
     const base = await getSubscriptionState(env, uid);
 
-    const scheduleAt = base.expireAt;
-    const o2 = await createPendingOrder(env, uid, 'k1', { activateMode: 'delayed', activateAt: scheduleAt });
+    const o2 = await createPendingOrder(env, uid, 'k1', { activateMode: 'delayed' });
+    check('延迟激活订单不携带任何时间参数', o2.ok && o2.activateMode === 'delayed' && o2.activateAt === undefined, o2);
     afdian.orders.push({ out_trade_no: 'ORD-D', custom_order_id: o2.customId, plan_id: 'plan-k1', month: 1, status: 2 });
     await syncUserOrders(env, uid, { force: true });
 
     const s = await getSubscriptionState(env, uid);
     check('延迟购买进入 pending（卡片显示已有未激活）', s.pending.length === 1, s.pending);
     check('pending 带套餐名', s.pending[0].planName.includes('科目一'), s.pending[0].planName);
-    check('预约时间原样回传', s.pending[0].activateAt === scheduleAt, { got: s.pending[0].activateAt, want: scheduleAt });
+    check('pending 不带预约时间', s.pending[0].activateAt === undefined, s.pending[0].activateAt);
     check('原有权益仍为 active', s.status === 'active', s.status);
     check('主卡片到期时间未变', s.expireAt === base.expireAt, { got: isoDate(s.expireAt), want: isoDate(base.expireAt) });
 
+    // 未激活期间不能靠「等时间」生效
+    await sweepAllOrders(env);
+    let s1 = await getSubscriptionState(env, uid);
+    check('定时任务不会自动激活未激活权益', s1.pending.length === 1, s1.pending.length);
+
     const act = await activateGroup(env, uid, s.pending[0].groupId);
-    check('手动立即激活成功', act.length === 1, act);
+    check('用户手动激活成功', act.length === 1, act);
     const s2 = await getSubscriptionState(env, uid);
     check('激活后 pending 清空', s2.pending.length === 0);
     check('到期时间已顺延', s2.expireAt > base.expireAt, { from: isoDate(base.expireAt), to: isoDate(s2.expireAt) });
 
-    const stolen = await activateGroup(env, 'attacker', s.pending.length ? s.pending[0].groupId : 'x');
+    const stolen = await activateGroup(env, 'attacker', s.pending[0].groupId);
     check('无法激活他人权益', stolen.length === 0, stolen);
 }
 
-console.log('\n[5] 定时任务：预约到点自动生效 + 过期标记');
+console.log('\n[5] 定时任务：过期标记（不做任何自动激活）');
 {
     const env = makeEnv();
     const uid = 'user-4';
-    const o1 = await createPendingOrder(env, uid, 'k1', { activateMode: 'delayed', activateAt: (nowSec() + 3600) * 1000 });
+    const o1 = await createPendingOrder(env, uid, 'k1', { activateMode: 'delayed' });
     afdian.orders = [{ out_trade_no: 'ORD-E', custom_order_id: o1.customId, plan_id: 'plan-k1', month: 1, status: 2 }];
     await syncUserOrders(env, uid, { force: true });
     let s = await getSubscriptionState(env, uid);
-    check('预约未到时保持 pending', s.status === 'pending', s.status);
-    check('预约未到时不会提前激活', s.pending.length === 1);
+    check('延迟激活的权益保持 pending', s.status === 'pending', s.status);
+    check('未激活的权益不会自动生效', s.pending.length === 1);
 
-    env._sqlite.prepare('UPDATE subscriptions SET activate_at = ? WHERE user_id = ?').run(nowSec() - 5, uid);
-    const sweep = await sweepAllOrders(env);
-    check('定时任务激活了预约记录', sweep.activated >= 1, sweep);
-    s = await getSubscriptionState(env, uid);
-    check('预约到点后自动生效', s.status === 'active', s.status);
+    const sweep0 = await sweepAllOrders(env);
+    check('定时任务不产生自动激活', sweep0.activated === 0, sweep0);
 
+    // 用户手动激活后再让它过期
+    await activateGroup(env, uid, s.pending[0].groupId);
     env._sqlite.prepare('UPDATE subscriptions SET expire_at = ? WHERE user_id = ?').run(nowSec() - 10, uid);
     const sweep2 = await sweepAllOrders(env);
     check('定时任务标记过期', sweep2.expired >= 1, sweep2);

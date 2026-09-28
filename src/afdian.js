@@ -6,7 +6,6 @@
 //   GET  /api/subscription/state      当前订阅状态（含节流后的自动核对）
 //   POST /api/subscription/check      立即向爱发电核对订单（用户点“我已支付”）
 //   POST /api/subscription/activate   激活一笔“延迟激活”的权益
-//   POST /api/subscription/schedule   修改“延迟激活”的预约时间
 //   POST /api/subscription/bind       用爱发电订单号手动绑定（兜底）
 //
 // 开通链路只走爱发电开放平台 API 主动查询，不依赖 webhook。
@@ -88,9 +87,8 @@ export async function handleCreateOrder(request, env) {
     const body = await readJson(request);
     const planKey = String(body.plan || '').toLowerCase();
     const activateMode = body.activateMode === 'delayed' ? 'delayed' : 'immediate';
-    const activateAt = Number(body.activateAt) || null;
 
-    const created = await createPendingOrder(env, g.session.userId, planKey, { activateMode, activateAt });
+    const created = await createPendingOrder(env, g.session.userId, planKey, { activateMode });
     if (!created.ok) return jsonResponse({ error: '套餐不存在', code: created.code }, 400);
 
     const url = buildOrderUrl(env, created.plan, created.customId, {
@@ -108,8 +106,7 @@ export async function handleCreateOrder(request, env) {
             subjectLabel: created.plan.short,
             months: created.plan.months
         },
-        activateMode: created.activateMode,
-        activateAt: created.activateAt ? created.activateAt * 1000 : null
+        activateMode: created.activateMode
     });
 }
 
@@ -170,7 +167,7 @@ function errorText(code) {
 }
 
 // ---------------------------------------------------------------------------
-// 激活 / 改预约时间
+// 激活待生效权益 / 手动绑定
 // ---------------------------------------------------------------------------
 export async function handleSubscriptionActivate(request, env) {
     if (request.method !== 'POST') return methodNotAllowed();
@@ -192,42 +189,6 @@ export async function handleSubscriptionActivate(request, env) {
     return jsonResponse({ ok: true, activated: activated.length, state });
 }
 
-export async function handleSubscriptionSchedule(request, env) {
-    if (request.method !== 'POST') return methodNotAllowed();
-
-    const g = await guard(request, env, 'sub-schedule');
-    if (g.error) return g.error;
-
-    const body = await readJson(request);
-    const groupId = String(body.groupId || '').trim();
-    if (!groupId) return jsonResponse({ error: '缺少订单标识', code: 'bad_input' }, 400);
-
-    const raw = Number(body.activateAt);
-    const now = Math.floor(Date.now() / 1000);
-    let activateAt = null;
-    if (Number.isFinite(raw) && raw > 0) {
-        activateAt = Math.floor(raw / 1000);
-        if (activateAt < now - 60) return jsonResponse({ error: '预约时间不能早于当前时间', code: 'bad_input' }, 400);
-        if (activateAt > now + 6 * 365 * 86400) return jsonResponse({ error: '预约时间过远', code: 'bad_input' }, 400);
-    }
-
-    const owned = await env.DB.prepare(
-        "SELECT id FROM subscriptions WHERE user_id = ? AND group_id = ? AND status = 'pending' LIMIT 1"
-    ).bind(g.session.userId, groupId).first();
-    if (!owned) return jsonResponse({ error: '未找到待激活的权益', code: 'not_found' }, 404);
-
-    await env.DB.prepare(
-        "UPDATE subscriptions SET activate_at = ?1, activate_mode = 'delayed', updated_at = ?2 WHERE user_id = ?3 AND group_id = ?4 AND status = 'pending'"
-    ).bind(activateAt, now, g.session.userId, groupId).run();
-
-    // 到点就直接激活，省得等下一次定时任务
-    if (activateAt && activateAt <= now) {
-        await activateGroup(env, g.session.userId, groupId, now);
-    }
-
-    const state = await getSubscriptionState(env, g.session.userId);
-    return jsonResponse({ ok: true, state });
-}
 
 // ---------------------------------------------------------------------------
 // 手动绑定订单号（兜底）

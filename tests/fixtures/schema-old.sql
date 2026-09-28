@@ -1,3 +1,8 @@
+-- ============================================================================
+-- 迁移测试夹具：订阅功能上线【之前】的数据库结构（旧版 schema.sql 快照）
+-- 仅用于 tests/migrate.test.mjs 验证 migrate.sql 的迁移正确性，不要用于新部署。
+-- ============================================================================
+
 -- ========== 用户与认证 ==========
 CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
@@ -74,65 +79,25 @@ CREATE TABLE IF NOT EXISTS user_sync (
     last_sync_at INTEGER NOT NULL
 );
 
--- ========== 订阅权益 ==========
--- 一行 = 一个科目的一条权益（k1 / k2）；同一笔爱发电订单的多行用 group_id 关联。
--- status: pending(已付款待激活) | active(生效中) | expired(已过期) | revoked(已撤销)
+-- ========== 订阅（旧模型：单表 + plan 文本，无科目概念）==========
 CREATE TABLE IF NOT EXISTS subscriptions (
-    id             TEXT PRIMARY KEY,
-    user_id        TEXT NOT NULL,
-    group_id       TEXT NOT NULL,
-    subject        TEXT NOT NULL,
-    plan_key       TEXT NOT NULL,
-    plan_name      TEXT,
-    months         INTEGER NOT NULL DEFAULT 1,
-    status         TEXT NOT NULL DEFAULT 'pending',
-    start_at       INTEGER NOT NULL DEFAULT 0,
-    expire_at      INTEGER NOT NULL DEFAULT 0,
-    activate_mode  TEXT NOT NULL DEFAULT 'immediate',
-    activated_at   INTEGER,
-    afdian_order   TEXT,
-    afdian_plan_id TEXT,
-    amount         TEXT,
-    source         TEXT,
-    created_at     INTEGER NOT NULL,
-    updated_at     INTEGER NOT NULL
+    id           TEXT PRIMARY KEY,
+    user_id      TEXT NOT NULL,
+    plan         TEXT NOT NULL DEFAULT 'pro_month',
+    status       TEXT NOT NULL DEFAULT 'inactive',
+    start_at     INTEGER NOT NULL,
+    expire_at    INTEGER NOT NULL,
+    afdian_order TEXT UNIQUE,
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL
 );
--- 幂等：同一笔爱发电订单的同一个科目只授予一次
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sub_order_subject ON subscriptions(afdian_order, subject);
-CREATE INDEX IF NOT EXISTS idx_sub_user     ON subscriptions(user_id, status);
-CREATE INDEX IF NOT EXISTS idx_sub_subject  ON subscriptions(user_id, subject);
-CREATE INDEX IF NOT EXISTS idx_sub_expire   ON subscriptions(expire_at);
-CREATE INDEX IF NOT EXISTS idx_sub_status   ON subscriptions(status);
-CREATE INDEX IF NOT EXISTS idx_sub_group    ON subscriptions(group_id);
+CREATE INDEX IF NOT EXISTS idx_sub_user   ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sub_expire ON subscriptions(expire_at);
 
--- ========== 待支付 / 待核对订单 ==========
--- custom_id 会作为爱发电下单链接的 custom_order_id 与 remark，
--- 是「爱发电订单 -> 本站账号」关联的唯一依据。
+-- ========== 待处理订单（旧模型：无关联码状态机）==========
 CREATE TABLE IF NOT EXISTS pending_orders (
-    custom_id     TEXT PRIMARY KEY,
-    user_id       TEXT NOT NULL,
-    plan_key      TEXT NOT NULL,
-    plan_id       TEXT,
-    months        INTEGER NOT NULL DEFAULT 1,
-    activate_mode TEXT NOT NULL DEFAULT 'immediate',
-    status        TEXT NOT NULL DEFAULT 'pending',
-    afdian_order  TEXT,
-    amount        TEXT,
-    check_count   INTEGER NOT NULL DEFAULT 0,
-    last_check_at INTEGER,
-    last_error    TEXT,
-    created_at    INTEGER NOT NULL,
-    updated_at    INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_pending_user ON pending_orders(user_id, status);
-CREATE INDEX IF NOT EXISTS idx_pending_plan ON pending_orders(plan_key, status, created_at);
-
--- ========== 订阅事件日志 ==========
-CREATE TABLE IF NOT EXISTS sub_events (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id    TEXT,
-    kind       TEXT NOT NULL,
-    detail     TEXT,
+    custom_id  TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    plan       TEXT NOT NULL,
     created_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_sub_events_user ON sub_events(user_id, created_at);
