@@ -13,7 +13,6 @@ not_found_handling = "none"
 [[d1_databases]]
 binding = "DB"
 database_name = "quiz-db"
-database_id = "REPLACE_WITH_YOUR_D1_ID"  # 控制台 D1 详情页复制
 
 # ========== 定时任务 ==========
 [triggers]
