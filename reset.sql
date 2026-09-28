@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS login_attempts;
+DROP TABLE IF EXISTS q_state;
+DROP TABLE IF EXISTS b_meta;
+DROP TABLE IF EXISTS mock_log;
+DROP TABLE IF EXISTS user_sync;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS pending_orders;
+DROP TABLE IF EXISTS users;
