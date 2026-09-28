@@ -9,6 +9,11 @@ directory = "./public"
 not_found_handling = "none"
 # binding = "ASSETS"
 
+[[d1_databases]]
+binding = "quiz_DB"
+database_name = "quiz-db"
+database_id = "c8c3138f-8dcc-4b0c-8745-9b91eb2ecb01"
+
 # ========== 定时任务 ==========
 [triggers]
 crons = ["0 3 * * *"]
