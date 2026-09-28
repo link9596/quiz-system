@@ -515,7 +515,6 @@ html.light-theme .footer { border-top: 1px solid rgba(0,0,0,.06); }
     z-index: 10;
     height: calc(58px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
-    padding-top: 4px;
 }
 body.with-bottom-nav .bottom-nav { display: flex; }
 html.light-theme .bottom-nav { border-top: 1px solid rgba(0,0,0,.06); }
@@ -612,6 +611,29 @@ html.light-theme .sub-card {
     background: var(--accent-blue); border-color: var(--accent-blue); color: #fff;
 }
 .guest-card .gc-btn:active { transform: scale(.97); }
+
+/* ---------- 「我的」底部：联系客服小字入口 ---------- */
+.profile-contact {
+    display: block;
+    margin: 26px auto 4px;
+    padding: 8px 14px;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: .4px;
+    color: var(--text-secondary);
+    opacity: .62;
+    cursor: pointer;
+    user-select: none;
+    background: none;
+    border: none;
+    font-family: inherit;
+    transition: opacity .2s, color .2s, transform .15s;
+    -webkit-tap-highlight-color: transparent;
+    width: fit-content;
+    max-width: 100%;
+}
+.profile-contact:hover { opacity: 1; color: var(--accent-light); }
+.profile-contact:active { opacity: 1; transform: scale(.96); }
 
 /* ================= 会员卡片（银行卡样式 + 3D 悬浮）================= */
 .bank-card-wrap { perspective: 1100px; margin-bottom: 16px; }
@@ -1584,7 +1606,6 @@ html.light-theme .sub-card {
                     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
                 </div>
                 <div class="gate-name">航线题库</div>
-                <div class="gate-sub">请登录后继续</div>
                 <div class="gate-dots"><i></i><i></i><i></i></div>
             </div>
         </div>
@@ -4483,9 +4504,12 @@ function renderProfile() {
                     <button class="gc-btn" id="guestRegisterBtn">注册账号</button>
                     <button class="gc-btn primary" id="guestLoginBtn">登录</button>
                 </div>
-            </div>`;
+            </div>
+            <button class="profile-contact" id="profileContactBtn" type="button">联系客服</button>`;
         container.querySelector('#guestLoginBtn').onclick = () => openAuthDialog('login');
         container.querySelector('#guestRegisterBtn').onclick = () => openAuthDialog('register');
+        const cc = container.querySelector('#profileContactBtn');
+        if (cc) cc.onclick = showContactDialog;
         return;
     }
 
@@ -4501,7 +4525,8 @@ function renderProfile() {
         </div>
         <div id="subPanel">
             <div class="sub-section"><div class="sub-empty">正在加载会员信息…</div></div>
-        </div>`;
+        </div>
+        <button class="profile-contact" id="profileContactBtn" type="button">联系客服</button>`;
 
     container.querySelector('#profileLogoutBtn').onclick = async () => {
         const ok = await confirmDialog('退出登录', '确定要退出登录吗？未同步的本地记录将保留在本设备。');
@@ -4513,7 +4538,16 @@ function renderProfile() {
         renderProfile();
     };
 
+    const cc = container.querySelector('#profileContactBtn');
+    if (cc) cc.onclick = showContactDialog;
+
     loadSubscription(true);
+}
+
+/* ---------------- 联系客服 ---------------- */
+const CONTACT_WECHAT = 'link9596';
+function showContactDialog() {
+    return alertDialog('联系客服', '如有疑问请联系：微信 ' + CONTACT_WECHAT);
 }
 
 async function loadSubscription(autoShowError) {
@@ -4571,7 +4605,7 @@ function renderSubPanel() {
         } else if (st.activeGroups && st.activeGroups.length > 1) {
             note = '共 ' + st.activeGroups.length + ' 笔权益叠加中，到期时间自动顺延';
         } else {
-            note = '剩余 ' + (st.daysLeft || 0) + ' 天 · 可随时续约叠加时长';
+            note = '剩余 ' + (st.daysLeft || 0) + ' 天 · 可续约叠加时长';
         }
     } else if (st.status === 'pending') {
         note = '有 ' + st.pending.length + ' 笔权益已购买但未激活，激活后开始计算时长';
@@ -4685,8 +4719,7 @@ function renderSubPanel() {
         <div class="sub-section">
             <div class="sub-section-title"><span class="dot"></span>会员服务</div>
             <div class="sub-empty">
-                科目一必做题库、科目二必做题库、科目一 + 科目二组合套餐，通过爱发电付款后自动开通，
-                到期时间按爱发电返回的订阅时长计算。
+                开通必做题库，享受更多云同步权益，付款后自动开通。
             </div>
             <div class="sub-actions">
                 <button class="sub-btn primary" id="subBuyBtn">${actionLabel}</button>
