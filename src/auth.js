@@ -1,7 +1,7 @@
 import { jsonResponse, parseCookies, generateId, sha256Hex, checkRateLimit } from '.utils.js';
 import { hashPassword, verifyPassword, generateSessionToken } from '.crypto.js';
 
-const SESSION_DURATION = 7  86400;  7 天
+const SESSION_DURATION = 7  86400;
 
 export async function handleAuth(request, env, path) {
     if (path === 'apiauthregister' && request.method === 'POST') return handleRegister(request, env);
