@@ -128,8 +128,10 @@ export async function handleSync(request, env) {
     }
 
     // 拉取自 since 之后的所有变更
+    // 返回字段契约（前端 applyRemoteChanges 依赖它）：
+    //   q = q_state 答题/收藏/连错，m = mock_log 模考记录，k = b_meta 题库进度
     const since = Number(body.since) || 0;
-    const pulls = await Promise.all([
+    const [qPull, metaPull, mockPull] = await Promise.all([
         env.DB.prepare(
             `SELECT bid, qid, st, ans, fav, streak FROM q_state
              WHERE uid = ? AND ver > ? LIMIT 2000`
@@ -146,9 +148,9 @@ export async function handleSync(request, env) {
     return jsonResponse({
         ok: true,
         serverVer: newVer,
-        q: pulls[0].results || [],
-        m: pulls[1].results || [],
-        k: pulls[2].results || []
+        q: qPull.results || [],
+        m: mockPull.results || [],
+        k: metaPull.results || []
     });
 }
 

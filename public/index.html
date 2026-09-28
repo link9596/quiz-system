@@ -151,7 +151,7 @@ body.with-bottom-nav .content-inner::after { height: calc(66px + env(safe-area-i
 }
 @keyframes barIn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .subject-tab.disabled { opacity: .55; cursor: not-allowed; }
-.home-circles { display: flex; justify-content: center; align-items: flex-start; gap: 30px; margin: 10px 0 26px; padding: 6px 0; }
+.home-circles { display: flex; justify-content: center; align-items: flex-start; gap: 50px; margin: 10px 0 26px; padding: 6px 0; }
 .circle-item {
     width: 148px; height: 148px; border-radius: 50%;
     border: 2px solid var(--circle-border);
@@ -1146,7 +1146,7 @@ html.light-theme .sub-card {
     .option { padding: 14px; }
     .modal-header { padding: 18px 16px 14px; }
     .question-grid { padding: 16px 16px calc(30px + env(safe-area-inset-bottom)); gap: 20px; }
-    .home-circles { gap: 20px; margin: 6px 0 22px; }
+    .home-circles { margin: 6px 0 22px; }
     .circle-item { width: 130px; height: 130px; }
     .circle-item .ci-icon { font-size: 25px; margin-bottom: 6px; }
     .circle-item .ci-title { font-size: 14px; }
@@ -1180,7 +1180,6 @@ html.light-theme .sub-card {
 }
 @media (max-width: 360px) {
     .circle-item { width: 116px; height: 116px; }
-    .home-circles { gap: 14px; }
     .hc-actions { gap: 8px; }
     .hc-btn { font-size: 12px; padding: 10px 6px; }
     .hc-btn svg { width: 15px; height: 15px; }
@@ -1889,12 +1888,16 @@ async function apiRegister(email, password, nickname) {
 }
 
 async function apiLogout() {
+    // 退出前尽量把还没上传的记录推上去（失败也不阻塞退出）
+    try { await syncNow(); } catch (e) {}
     try {
         await fetch(`${AUTH_API}/logout`, {
             method: 'POST',
             credentials: 'include'
         });
     } catch (e) {}
+    // 注意：不清空 outbox。里面每条都带 owner，
+    // 同一账号再登录会继续上传，换成别的账号则会被自动丢弃。
     setCurrentUser(null);
     // 清理本地同步状态
     localStorage.removeItem('quiz_sync_v1');
@@ -2024,59 +2027,190 @@ function getUnfinishedExam() {
 }
 
 /* =========================================================================
- * 6. 同步 outbox（异步、防抖、批量）
+ * 6. 同步：推送本地变更（outbox）+ 下拉云端变更
+ * -------------------------------------------------------------------------
+ * 之前只推不拉，换设备 / 清缓存后云端数据下不来，看起来就像「没同步上云」。
+ * 现在一次请求同时完成：
+ *   ① 把 outbox 里的本地变更推上去；
+ *   ② 用 since 游标把云端「新增的」变更拉回来并合并进本地。
  * ========================================================================= */
 const SYNC_DEBOUNCE = 5000;
+const SYNC_VER_PREFIX = 'quiz_sync_ver_v1:';
 let syncTimer = null;
+let syncInFlight = false;
 
-function markPendingSync(type, payload) {
-    if (!getCurrentUser()) return;  // 未登录不上云
+function readOutbox() {
+    try { return JSON.parse(localStorage.getItem('quiz_sync_outbox')) || []; } catch (e) { return []; }
+}
+function writeOutbox(arr) {
     try {
-        const raw = localStorage.getItem('quiz_sync_outbox') || '[]';
-        const arr = JSON.parse(raw);
-        arr.push({ type, payload, ts: Date.now() });
-        localStorage.setItem('quiz_sync_outbox', JSON.stringify(arr.slice(-2000)));
+        if (arr && arr.length) localStorage.setItem('quiz_sync_outbox', JSON.stringify(arr.slice(-2000)));
+        else localStorage.removeItem('quiz_sync_outbox');
+    } catch (e) {}
+}
+function getSyncVer() {
+    const u = getCurrentUser();
+    if (!u) return 0;
+    return parseInt(localStorage.getItem(SYNC_VER_PREFIX + u.id) || '0', 10) || 0;
+}
+function setSyncVer(v) {
+    const u = getCurrentUser();
+    if (!u || typeof v !== 'number') return;
+    try { localStorage.setItem(SYNC_VER_PREFIX + u.id, String(v)); } catch (e) {}
+}
+
+/**
+ * 记一笔待上传的变更。
+ * 未登录时也照样攒着（标记 owner = null），登录后会被认领并上传，
+ * 这样游客阶段做的题不会白做。
+ */
+function markPendingSync(type, payload) {
+    try {
+        const arr = readOutbox();
+        arr.push({ type, payload, ts: Date.now(), owner: (getCurrentUser() || {}).id || null });
+        writeOutbox(arr);
     } catch (e) {}
     scheduleSyncUpload();
 }
-function scheduleSyncUpload() {
-    if (!getCurrentUser()) return;
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(uploadOutbox, SYNC_DEBOUNCE);
-}
-async function uploadOutbox() {
-    const user = getCurrentUser();
-    if (!user) return;
-    const raw = localStorage.getItem('quiz_sync_outbox');
-    if (!raw) return;
-    let arr;
-    try { arr = JSON.parse(raw); } catch (e) { return; }
-    if (!arr.length) return;
 
+function scheduleSyncUpload() {
+    if (!getCurrentUser()) return;   // 未登录不排期，等登录后 enterApp 统一推
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => { syncNow(); }, SYNC_DEBOUNCE);
+}
+
+/**
+ * 推 + 拉一次。
+ * @param {{keepalive?: boolean}} [options] keepalive 用于页面卸载时尽力发出去
+ */
+async function syncNow(options = {}) {
+    const user = getCurrentUser();
+    if (!user || syncInFlight) return null;
+
+    // outbox 里有别的账号留下的变更 → 直接丢弃，绝不把 A 的数据推到 B 名下
+    let outbox = readOutbox();
+    if (outbox.some(c => c.owner && c.owner !== user.id)) {
+        writeOutbox([]);
+        outbox = [];
+    }
+
+    syncInFlight = true;
     try {
+        const changes = outbox.slice(0, 500).map(c => ({ type: c.type, payload: c.payload, ts: c.ts }));
         const res = await fetch('/api/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ changes: arr.slice(0, 500) })
+            keepalive: !!options.keepalive,
+            body: JSON.stringify({ changes, since: getSyncVer() })
         });
-        if (!res.ok) return;
-        // 清掉已推送的部分
-        const remain = arr.slice(500);
-        if (remain.length) localStorage.setItem('quiz_sync_outbox', JSON.stringify(remain));
-        else localStorage.removeItem('quiz_sync_outbox');
-        // 继续推
-        if (remain.length) scheduleSyncUpload();
+        if (!res.ok) return null;
+        const data = await res.json().catch(() => null);
+        if (!data || !data.ok) return null;
+
+        // 推送成功：先清掉已推的部分，再合并云端数据
+        writeOutbox(outbox.slice(500));
+        const changed = applyRemoteChanges(data);
+        setSyncVer(data.serverVer);
+
+        if (readOutbox().length) scheduleSyncUpload();
+        else if (changed) refreshViewsAfterSync();
+        return data;
     } catch (e) {
-        // 网络异常，保留 outbox
+        return null;   // 网络异常，outbox 原样保留，下次再推
+    } finally {
+        syncInFlight = false;
     }
+}
+
+/** 兼容旧调用名 */
+function uploadOutbox(options) { return syncNow(options); }
+
+/** 把云端拉回来的变更合并进本地存储 */
+function applyRemoteChanges(data) {
+    let touched = false;
+
+    // 按题库分组后再写：setBankStore 会序列化整个题库的 JSON，
+    // 逐行写的话 2000 条记录 = 2000 次读写，必须合并成「每个题库一次」
+    const byBank = new Map();
+    for (const row of (data.q || [])) {
+        if (!row || !row.bid || typeof row.qid !== 'number') continue;
+        if (!byBank.has(row.bid)) byBank.set(row.bid, []);
+        byBank.get(row.bid).push(row);
+    }
+    for (const [bid, rows] of byBank) {
+        const b = getBankStore(bid);
+        for (const row of rows) {
+            const qid = row.qid;
+            if (row.st === 1) b.answerRecord[qid] = { status: 'correct', userAnswer: row.ans || null, ts: (b.answerRecord[qid] || {}).ts || Date.now() };
+            else if (row.st === 2) b.answerRecord[qid] = { status: 'wrong', userAnswer: row.ans || null, ts: (b.answerRecord[qid] || {}).ts || Date.now() };
+            else if (b.answerRecord[qid]) delete b.answerRecord[qid];
+
+            const fi = b.favorites.indexOf(qid);
+            if (row.fav && fi === -1) b.favorites.push(qid);
+            else if (!row.fav && fi > -1) b.favorites.splice(fi, 1);
+
+            if (!b.wrongStreak) b.wrongStreak = {};
+            if (row.streak > 0) b.wrongStreak[qid] = row.streak;
+            else delete b.wrongStreak[qid];
+        }
+        b.updatedAt = Date.now();
+        setBankStore(bid, b);
+        touched = true;
+    }
+
+    for (const row of (data.k || [])) {
+        if (!row || !row.bid) continue;
+        const b = getBankStore(row.bid);
+        b.currentIndex = row.cur_idx || 0;
+        setBankStore(row.bid, b);
+        touched = true;
+    }
+
+    if (mergeRemoteMockRecords(data.m || [])) touched = true;
+    return touched;
+}
+
+/** 合并云端模考记录（用 ts 去重，本地已有同一条就跳过） */
+function mergeRemoteMockRecords(rows) {
+    if (!rows.length) return false;
+    const arr = getMockRecords();
+    const seen = new Set(arr.map(r => String(r.ts)));
+    let added = 0;
+    for (const row of rows) {
+        if (!row || row.ts == null) continue;
+        const key = String(row.ts);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        arr.push({
+            ts: row.ts, score: row.score, passed: !!row.passed,
+            correct: row.correct || 0, wrong: row.wrong || 0, unanswered: row.unanswered || 0,
+            total: row.total || 0, duration: row.dur || 0,
+            answers: null,          // 详情按需从 /api/mock/detail 拉
+            serverId: row.id
+        });
+        added++;
+    }
+    if (!added) return false;
+    arr.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    if (arr.length > 200) arr.splice(0, arr.length - 200);
+    try { localStorage.setItem(MOCK_RECORDS_KEY, JSON.stringify(arr)); } catch (e) {}
+    return true;
+}
+
+/** 同步完成后刷新当前视图（答题中不打扰） */
+function refreshViewsAfterSync() {
+    updateSyncButtonVisibility();
+    if (state.view === 'home') renderHome();
+    else if (state.view === 'profile') renderProfile();
+    else if (state.view === 'mockHistory') renderMockHistory();
 }
 
 // 页面可见性变化 & 网络恢复时触发同步
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         if (state.view === 'quiz' && state.answerMode === 'exam') saveUnfinishedExam();
-        uploadOutbox();
+        uploadOutbox({ keepalive: true });
     }
 });
 window.addEventListener('online', () => {
@@ -2085,6 +2219,22 @@ window.addEventListener('online', () => {
 });
 window.addEventListener('beforeunload', () => {
     if (state.view === 'quiz' && state.answerMode === 'exam') saveUnfinishedExam();
+    // 防抖还没到点就关页面时，用 keepalive 尽力把最后一批推出去
+    if (readOutbox().length) {
+        try {
+            const u = getCurrentUser();
+            if (u) {
+                const changes = readOutbox().slice(0, 500).map(c => ({ type: c.type, payload: c.payload, ts: c.ts }));
+                fetch('/api/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    keepalive: true,
+                    body: JSON.stringify({ changes, since: 0 })
+                });
+            }
+        } catch (e) {}
+    }
 });
 
 /* =========================================================================
@@ -2765,10 +2915,36 @@ function renderMockHistory() {
     });
 }
 
-function openMockDetail(recordIndex) {
+async function openMockDetail(recordIndex) {
     const recs = getMockRecords();
-    if (!recs[recordIndex]) return;
+    const rec = recs[recordIndex];
+    if (!rec) return;
     currentMockRecordIndex = recordIndex;
+
+    // 从云端同步下来的记录只有概览，答题详情按需拉一次
+    if (!rec.answers && rec.serverId) {
+        try {
+            const res = await fetch('/api/mock/detail?id=' + encodeURIComponent(rec.serverId), { credentials: 'include' });
+            if (res.ok) {
+                const d = await res.json();
+                if (Array.isArray(d.detail)) {
+                    rec.answers = d.detail.map(a => {
+                        let pointCode = 'unknown';
+                        let pointTitle = '未分类';
+                        const qs = bankCache[a[0]];
+                        const q = qs && qs[a[1]];
+                        if (q && q._point) { pointCode = q._point.code; pointTitle = q._point.title; }
+                        return {
+                            bankId: a[0], qIdx: a[1], userAnswer: a[2],
+                            isRight: !!a[3], unanswered: !!a[4],
+                            pointCode, pointTitle, qTitle: (q && q.q_title) || ''
+                        };
+                    });
+                    try { localStorage.setItem(MOCK_RECORDS_KEY, JSON.stringify(recs)); } catch (e) {}
+                }
+            }
+        } catch (e) { /* 拉不到就只展示概览 */ }
+    }
     navigate('mockDetail');
 }
 

@@ -25,10 +25,11 @@
     "secret:afdian": "wrangler secret put AFDIAN_USER_ID && wrangler secret put AFDIAN_TOKEN",
     "secret:list": "wrangler secret list",
 
-    "test": "node tests/pepper.test.mjs && node tests/migrate.test.mjs && node tests/subscription.test.mjs && node tests/http.test.mjs",
+    "test": "node tests/pepper.test.mjs && node tests/migrate.test.mjs && node tests/subscription.test.mjs && node tests/http.test.mjs && node tests/sync.test.mjs",
     "test:engine": "node tests/subscription.test.mjs",
     "test:http": "node tests/http.test.mjs",
     "test:migrate": "node tests/migrate.test.mjs",
+    "test:sync": "node tests/sync.test.mjs",
 
     "setup": "npm run db:init && npm run secret:pepper",
     "redeploy": "npm run deploy && npm run logs"
