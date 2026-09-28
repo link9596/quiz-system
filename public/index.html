@@ -538,7 +538,6 @@ html.light-theme .bottom-nav { border-top: 1px solid rgba(0,0,0,.06); }
 .bottom-nav-item span { font-size: 11px; font-weight: 600; }
 .bottom-nav-item.active { color: var(--accent-blue); }
 .bottom-nav-item:active { background-color: rgba(127,127,127,.1); transition-duration: .01s; }
-/* 抬手后遮罩缓慢淡出 */
 .bottom-nav-item:not(:active) { background-color: rgba(127,127,127,0); }
 
 /* ================= 我的 / 个人中心 ================= */
@@ -624,7 +623,7 @@ html.light-theme .sub-card {
 }
 .guest-card .gc-btn:active { transform: scale(.97); }
 
-/* ---------- 「我的」底部：联系客服小字入口 ---------- */
+/* ---------- 「我的」底部联系方式 ---------- */
 .profile-contact {
     display: block;
     margin: 26px auto 4px;
@@ -647,7 +646,7 @@ html.light-theme .sub-card {
 .profile-contact:hover { opacity: 1; color: var(--accent-light); }
 .profile-contact:active { opacity: 1; transform: scale(.96); }
 
-/* ================= 会员卡片（银行卡样式 + 3D 悬浮）================= */
+/* ================= 会员卡片 ================= */
 .bank-card-wrap { perspective: 1100px; margin-bottom: 16px; }
 .bank-card {
     position: relative;
@@ -835,7 +834,6 @@ html.light-theme .sub-card {
 
 /* ================= 购买 / 客服 弹窗 ================= */
 .purchase-dialog {
-    /* 顶部标题与底部按钮固定，只有中间内容滚动；不加任何分隔线 */
     display: flex; flex-direction: column;
     width: 100%; max-width: 420px; max-height: 86vh;
     overflow: hidden;
@@ -993,13 +991,6 @@ html.light-theme .sub-card {
     box-shadow: 0 12px 34px rgba(190,140,20,.35), 0 2px 6px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.75);
 }
 .bank-card.is-gold:hover { box-shadow: 0 26px 60px rgba(190,140,20,.45), 0 4px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.85); }
-/* 拉丝金属质感 */
-.bank-card.is-gold::after {
-    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .35;
-    background: repeating-linear-gradient(112deg,
-        rgba(255,255,255,.55) 0 1px, rgba(255,255,255,0) 1px 4px,
-        rgba(120,80,0,.16) 4px 5px, rgba(255,255,255,0) 5px 9px);
-}
 .bank-card.is-gold .bc-watermark { opacity: .14; color: #6d4c05; }
 .bank-card.is-gold .bc-brand { opacity: 1; color: #3a2a05; }
 .bank-card.is-gold .bc-logo {
@@ -1018,12 +1009,14 @@ html.light-theme .sub-card {
 .bank-card.is-gold .bc-label { opacity: .62; }
 .bank-card.is-gold .bc-note { border-top-color: rgba(90,62,4,.28); opacity: .9; }
 .bank-card.is-gold .bc-status {
-    background: rgba(20,54,32,.88); border-color: rgba(255,255,255,.5); color: #b8f0cd;
+    background: rgba(90, 62, 4, .82);
+    border-color: rgba(255, 255, 255, .6);
+    color: #ffe9a8;
 }
 .bank-card.is-gold .bc-glare {
     background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.85), transparent 60%);
 }
-/* 待激活：压暗成古铜色，与金卡区分开 */
+/* 待激活：古铜色 */
 .bank-card.is-pending {
     background:
         radial-gradient(120% 150% at 10% -10%, rgba(255,255,255,.20), transparent 46%),
@@ -1054,7 +1047,6 @@ html.light-theme .sub-card {
 .app-container.gone { opacity: 0; transform: scale(.975); pointer-events: none; }
 
 .gate-stage { position: relative; width: 100%; max-width: 340px; transform: translateZ(0) translateY(0); transition: transform .88s var(--ease-soft); will-change: transform; }
-/* 整组（logo + 表单）一起上移，保证在矮屏上也不会把表单顶出视口 */
 .auth-gate.login .gate-stage { transform: translateZ(0) translateY(calc(-1 * var(--gate-lift, 0px))); }
 @keyframes gateIn {
     from { opacity: 0; transform: translateY(14px) scale(.98); }
@@ -1621,7 +1613,7 @@ html.light-theme .sub-card {
     </div>
 </div>
 
-<!-- 启动 / 登录注册门（必须登录后才能进入 App） -->
+<!-- 启动 / 登录注册门 -->
 <div class="auth-gate" id="authGate">
     <div class="gate-stage" id="gateStage">
         <div class="gate-head-wrap" id="gateHeadWrap">
@@ -4830,7 +4822,7 @@ function renderProfile() {
                     <button class="gc-btn primary" id="guestLoginBtn">登录</button>
                 </div>
             </div>
-            <button class="profile-contact" id="profileContactBtn" type="button">联系客服</button>`;
+            <button class="profile-contact" id="profileContactBtn" type="button">有疑问？点我</button>`;
         container.querySelector('#guestLoginBtn').onclick = () => openAuthDialog('login');
         container.querySelector('#guestRegisterBtn').onclick = () => openAuthDialog('register');
         const cc = container.querySelector('#profileContactBtn');
@@ -4877,13 +4869,11 @@ function renderProfile() {
 /* ---------------- 联系客服 ---------------- */
 const CONTACT_WECHAT = 'link9596';
 function showContactDialog() {
-    return alertDialog('联系客服', '如有疑问请联系：微信 ' + CONTACT_WECHAT);
+    return alertDialog('有疑问？', '请联系：微信 ' + CONTACT_WECHAT);
 }
 
 /**
  * 加载会员状态。
- * 先用本地缓存立刻渲染（TTL 5 分钟），只有缓存过期、或还有未完成订单时才真正请求，
- * 避免每次进「我的」页都打一次接口。
  */
 async function loadSubscription(autoShowError) {
     const cached = readSubCache();
@@ -5095,7 +5085,7 @@ function renderSubPanel() {
         <div class="sub-section">
             <div class="sub-section-title"><span class="dot"></span>会员服务</div>
             <div class="sub-empty">
-                开通必做题库，享受更多云同步权益，付款后自动开通。
+                开通必做题库，享受更多云同步权益~<br>购买后如未更新权益，请尝试点击刷新状态~
             </div>
             <div class="sub-actions">
                 <button class="sub-btn primary" id="subBuyBtn">${actionLabel}</button>
@@ -5673,8 +5663,8 @@ async function loadWaline() {
     if (!WALINE_SERVER_URL || WALINE_SERVER_URL.includes('your-waline-server')) {
         container.innerHTML = `
             <div class="discuss-placeholder">
-                讨论区暂未开放<br>
-                敬请期待~
+                讨论区尚未配置<br>
+                请将代码中的 <code>WALINE_SERVER_URL</code> 替换为你部署的 Waline 服务器地址
             </div>`;
         return;
     }

@@ -2,7 +2,7 @@
 -- 订阅功能联调脚本（手动改库，不需要真的付款）
 -- ----------------------------------------------------------------------------
 -- 用法：
---   1. 把下面每一段里的  'you@example.com'  改成你自己的注册邮箱（只改这一处）
+--   1. 把下面每一段里的  'lk@atlinker.cn'  改成你自己的注册邮箱（只改这一处）
 --   2. 远程库：npm run db:test
 --      本地库：npm run db:test:local
 --      或单段执行：
@@ -60,7 +60,7 @@ SELECT 'test-g1-k1', id, 'test-g1', 'k1', 'k1k2', '科目一 + 科目二必做�
        'immediate', CAST(strftime('%s','now') AS INTEGER),
        'TEST-ORDER-G1', 'test-plan-k1k2', '0.00', 'manual_sql',
        CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 
 INSERT INTO subscriptions
   (id, user_id, group_id, subject, plan_key, plan_name, months, status,
@@ -72,7 +72,7 @@ SELECT 'test-g1-k2', id, 'test-g1', 'k2', 'k1k2', '科目一 + 科目二必做�
        'immediate', CAST(strftime('%s','now') AS INTEGER),
        'TEST-ORDER-G1', 'test-plan-k1k2', '0.00', 'manual_sql',
        CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 
 -- 验证：应该看到 2 行 (k1, k2)，都是 active
 SELECT u.email, s.subject, s.status, datetime(s.expire_at,'unixepoch','localtime') AS expire_at
@@ -96,7 +96,7 @@ SELECT 'test-k1-a', id, 'test-g2', 'k1', 'k1', '科目一必做题库', 1, 'acti
        'immediate', CAST(strftime('%s','now') AS INTEGER),
        'TEST-ORDER-G2', 'test-plan-k1', '0.00', 'manual_sql',
        CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 
 
 -- ============================================================================
@@ -115,7 +115,7 @@ SELECT 'test-k1-a', id, 'test-g3a', 'k1', 'k1', '科目一必做题库', 1, 'act
        'immediate', CAST(strftime('%s','now') AS INTEGER),
        'TEST-ORDER-G3A', 'test-plan-k1', '0.00', 'manual_sql',
        CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 
 -- 再来一条已购买、未激活的科目一（3 个月）
 INSERT INTO subscriptions
@@ -126,7 +126,7 @@ SELECT 'test-k1-b', id, 'test-g3b', 'k1', 'k1', '科目一必做题库', 3, 'pen
        0, 0, 'delayed', NULL,
        'TEST-ORDER-G3B', 'test-plan-k1', '0.00', 'manual_sql',
        CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 
 -- 点「激活」后，这一行应该变成 active，且 expire_at ≈ 现在 + 20 天 + 3 个月
 -- （引擎从「该科目已有到期时间」往后叠加，不会覆盖）
@@ -144,7 +144,7 @@ INSERT INTO pending_orders
 SELECT 'TK-TEST000001', id, 'k1', 'test-plan-k1', 1, 'immediate',
        'pending', 0,
        CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 
 INSERT INTO pending_orders
   (custom_id, user_id, plan_key, plan_id, months, activate_mode,
@@ -152,7 +152,7 @@ INSERT INTO pending_orders
 SELECT 'TK-TEST000002', id, 'k1k2', 'test-plan-k1k2', 1, 'delayed',
        'pending', 0,
        CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 
 -- 验证
 SELECT u.email, p.custom_id, p.plan_key, p.status, p.activate_mode
@@ -180,7 +180,7 @@ SELECT 'test-add-k1', id, 'test-add-k1k2', 'k1', 'k1', '科目一必做题库', 
        'immediate', CAST(strftime('%s','now') AS INTEGER),
        'TEST-ORDER-ADD1', 'test-plan-k1', '0.00', 'manual_sql',
        CAST(strftime('%s','now') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 
 -- 因为已经有 45 天的权益，这行会在「从今天算起」和「从 45 天后算起」里取较晚者，
 -- 所以卡片的到期时间应该基本不变（这正是「不会吞掉已付费时长」的效果）。
@@ -202,7 +202,7 @@ SELECT 'test-exp-k1', id, 'test-exp', 'k1', 'k1', '科目一必做题库', 1, 'a
        'immediate', CAST(strftime('%s','now','-60 days') AS INTEGER),
        'TEST-ORDER-EXP', 'test-plan-k1', '0.00', 'manual_sql',
        CAST(strftime('%s','now','-60 days') AS INTEGER), CAST(strftime('%s','now') AS INTEGER)
-FROM users WHERE email = 'you@example.com';
+FROM users WHERE email = 'lk@atlinker.cn';
 -- 打开「我的」页时会自动被标记为 expired，并进入「历史记录」。
 
 
