@@ -9,11 +9,6 @@ directory = "./public"
 not_found_handling = "none"
 # binding = "ASSETS"
 
-# ========== D1 ==========
-[[d1_databases]]
-binding = "DB"
-database_name = "quiz-db"
-
 # ========== 定时任务 ==========
 [triggers]
 crons = ["0 3 * * *"]
