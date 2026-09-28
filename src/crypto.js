@@ -1,6 +1,17 @@
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_KEY_LENGTH = 256;
 
+// WebCrypto 不允许长度为 0 的 HMAC 密钥（会抛 DataError），
+// 因此 PASSWORD_PEPPER 未配置时退回一个固定的非空胡椒，
+// 保证「注册 / 登录」在没写 secret 的情况下也能正常工作。
+// 一旦配置了真实 secret，请不要再改动，否则历史密码哈希会全部失效。
+const DEFAULT_PEPPER = 'quiz-app::fallback-pepper::please-set-PASSWORD_PEPPER';
+
+function normalizePepper(pepper) {
+    const p = pepper == null ? '' : String(pepper);
+    return p.length > 0 ? p : DEFAULT_PEPPER;
+}
+
 function bytesToBase64(bytes) {
     let s = '';
     for (const b of bytes) s += String.fromCharCode(b);
@@ -16,7 +27,7 @@ function base64ToBytes(str) {
 async function pepperedKey(password, pepper) {
     const pepperKey = await crypto.subtle.importKey(
         'raw',
-        new TextEncoder().encode(pepper),
+        new TextEncoder().encode(normalizePepper(pepper)),
         { name: 'HMAC', hash: 'SHA-256' },
         false,
         ['sign']

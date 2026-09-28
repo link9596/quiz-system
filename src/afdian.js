@@ -1,104 +1,253 @@
-import { jsonResponse } from './utils.js';
-import { md5 } from './md5.js';
+// ============================================================================
+// 订阅相关 HTTP 接口
+// ----------------------------------------------------------------------------
+//   GET  /api/subscription/plans      套餐目录
+//   POST /api/subscription/create     生成待支付订单 + 爱发电下单链接
+//   GET  /api/subscription/state      当前订阅状态（含节流后的自动核对）
+//   POST /api/subscription/check      立即向爱发电核对订单（用户点“我已支付”）
+//   POST /api/subscription/activate   激活一笔“延迟激活”的权益
+//   POST /api/subscription/schedule   修改“延迟激活”的预约时间
+//   POST /api/subscription/bind       用爱发电订单号手动绑定（兜底）
+//
+// 开通链路只走爱发电开放平台 API 主动查询，不依赖 webhook。
+// ============================================================================
+
+import { jsonResponse, checkRateLimit } from './utils.js';
 import { requireAuth } from './auth.js';
+import { buildOrderUrl, isAfdianConfigured } from './afdian-api.js';
+import {
+    createPendingOrder,
+    getSubscriptionState,
+    syncUserOrders,
+    activateGroup,
+    bindOrderByNo,
+    publicPlanCatalog
+} from './subscription.js';
 
-// POST /api/subscription/create —— 生成待处理订单并返回爱发电下单链接
-export async function handleCreateOrder(request, env) {
-    if (request.method !== 'POST') return jsonResponse({ error: 'Method Not Allowed' }, 405);
+function methodNotAllowed() {
+    return jsonResponse({ error: 'Method Not Allowed' }, 405);
+}
 
+async function readJson(request) {
+    try {
+        const body = await request.json();
+        return body && typeof body === 'object' ? body : {};
+    } catch {
+        return {};
+    }
+}
+
+async function guard(request, env, scope) {
+    const session = await requireAuth(request, env);
+    if (!session) return { error: jsonResponse({ error: '未登录' }, 401) };
+    if (!(await checkRateLimit(env.SUB_RATE_LIMITER, scope + ':' + session.userId))) {
+        return { error: jsonResponse({ error: '操作过于频繁，请稍后再试' }, 429) };
+    }
+    return { session };
+}
+
+const supportPayload = (env) => ({
+    support: String(env.SUPPORT_CONTACT || '').trim() || null
+});
+
+// ---------------------------------------------------------------------------
+// 套餐目录
+// ---------------------------------------------------------------------------
+export async function handleSubscriptionPlans(request, env) {
+    if (request.method !== 'GET') return methodNotAllowed();
     const session = await requireAuth(request, env);
     if (!session) return jsonResponse({ error: '未登录' }, 401);
 
-    let body;
-    try { body = await request.json(); } catch { body = {}; }
-    const plan = body.plan === 'pro_year' ? 'pro_year' : 'pro_month';
-
-    const customId = crypto.randomUUID();
-    const now = Math.floor(Date.now() / 1000);
-    await env.DB.prepare(
-        `INSERT INTO pending_orders (custom_id, user_id, plan, created_at)
-         VALUES (?1, ?2, ?3, ?4)`
-    ).bind(customId, session.userId, plan, now).run();
-
-    const planId = plan === 'pro_year' ? env.AFDIAN_PLAN_YEAR : env.AFDIAN_PLAN_MONTH;
-    const url = `https://afdian.net/order/create?plan_id=${encodeURIComponent(planId)}&remark=${encodeURIComponent(customId)}`;
-
-    return jsonResponse({ customId, url });
-}
-
-// POST /api/afdian/webhook —— 爱发电回调
-export async function handleAfdianWebhook(request, env) {
-    if (request.method !== 'POST') return jsonResponse({ error: 'Method Not Allowed' }, 405);
-
-    let body;
-    try { body = await request.json(); } catch { return jsonResponse({ error: '格式错误' }, 400); }
-
-    const { ec, em, data } = body || {};
-    if (ec !== 200 || !data) return jsonResponse({ error: '无效的 webhook' }, 400);
-    if (data.type !== 'order') return jsonResponse({ ec: 200, em: 'ignored' });
-
-    const order = data.order;
-    if (!order || !order.out_trade_no) return jsonResponse({ error: '订单信息缺失' }, 400);
-
-    const orderNo = order.out_trade_no;
-
-    // 幂等
-    const existing = await env.DB.prepare(
-        'SELECT id FROM subscriptions WHERE afdian_order = ?'
-    ).bind(orderNo).first();
-    if (existing) return jsonResponse({ ec: 200, em: 'ok' });
-
-    // 通过 remark 关联用户
-    const remark = String(order.remark || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 64);
-    if (!remark) return jsonResponse({ ec: 200, em: 'no remark' });
-
-    const pending = await env.DB.prepare(
-        'SELECT user_id, plan FROM pending_orders WHERE custom_id = ?'
-    ).bind(remark).first();
-    if (!pending) return jsonResponse({ ec: 200, em: 'order not linked' });
-
-    // 只接受已支付状态
-    if (order.status !== 2) return jsonResponse({ ec: 200, em: 'not paid' });
-
-    const now = Math.floor(Date.now() / 1000);
-    const plan = pending.plan;
-    const duration = plan === 'pro_year' ? 365 * 86400 : 30 * 86400;
-
-    // 续期：从现有活跃订阅的到期时间继续
-    const existingSub = await env.DB.prepare(
-        `SELECT expire_at FROM subscriptions
-         WHERE user_id = ? AND status = 'active' AND expire_at > ?
-         ORDER BY expire_at DESC LIMIT 1`
-    ).bind(pending.user_id, now).first();
-
-    const startAt = existingSub ? existingSub.expire_at : now;
-    const expireAt = startAt + duration;
-
-    await env.DB.prepare(
-        `INSERT INTO subscriptions
-           (id, user_id, plan, status, start_at, expire_at, afdian_order, created_at, updated_at)
-         VALUES (?1, ?2, ?3, 'active', ?4, ?5, ?6, ?7, ?7)`
-    ).bind(crypto.randomUUID(), pending.user_id, plan, startAt, expireAt, orderNo, now).run();
-
-    await env.DB.prepare('DELETE FROM pending_orders WHERE custom_id = ?').bind(remark).run();
-
-    return jsonResponse({ ec: 200, em: 'ok' });
-}
-
-// 可选：主动查询爱发电订单（更严格的安全校验）
-export async function queryAfdianOrder(env, orderNo) {
-    const ts = Math.floor(Date.now() / 1000);
-    const paramsObj = { out_trade_no: orderNo };
-    const params = JSON.stringify(paramsObj);
-    const userId = env.AFDIAN_USER_ID;
-    const token = env.AFDIAN_TOKEN;
-    // sign = md5(token + "params" + params + "ts" + ts + "user_id" + user_id)
-    const sign = md5(`${token}params${params}ts${ts}user_id${userId}`);
-
-    const res = await fetch('https://afdian.net/api/open/query-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, params, ts, sign })
+    return jsonResponse({
+        ok: true,
+        plans: publicPlanCatalog(env),
+        configured: isAfdianConfigured(env),
+        memberNo: session.userId,
+        ...supportPayload(env)
     });
-    return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// 创建订单
+// ---------------------------------------------------------------------------
+export async function handleCreateOrder(request, env) {
+    if (request.method !== 'POST') return methodNotAllowed();
+
+    const g = await guard(request, env, 'sub-create');
+    if (g.error) return g.error;
+
+    if (!isAfdianConfigured(env)) {
+        return jsonResponse({
+            error: '支付通道尚未配置，请联系客服人工开通',
+            code: 'not_configured',
+            memberNo: g.session.userId,
+            ...supportPayload(env)
+        }, 503);
+    }
+
+    const body = await readJson(request);
+    const planKey = String(body.plan || '').toLowerCase();
+    const activateMode = body.activateMode === 'delayed' ? 'delayed' : 'immediate';
+    const activateAt = Number(body.activateAt) || null;
+
+    const created = await createPendingOrder(env, g.session.userId, planKey, { activateMode, activateAt });
+    if (!created.ok) return jsonResponse({ error: '套餐不存在', code: created.code }, 400);
+
+    const url = buildOrderUrl(env, created.plan, created.customId, {
+        month: created.plan.months,
+        productType: created.plan.productType
+    });
+
+    return jsonResponse({
+        ok: true,
+        customId: created.customId,
+        url,
+        plan: {
+            key: created.plan.key,
+            name: created.plan.name,
+            subjectLabel: created.plan.short,
+            months: created.plan.months
+        },
+        activateMode: created.activateMode,
+        activateAt: created.activateAt ? created.activateAt * 1000 : null
+    });
+}
+
+// ---------------------------------------------------------------------------
+// 状态
+// ---------------------------------------------------------------------------
+export async function handleSubscriptionState(request, env) {
+    if (request.method !== 'GET') return methodNotAllowed();
+    const session = await requireAuth(request, env);
+    if (!session) return jsonResponse({ error: '未登录' }, 401);
+
+    // 有未完成订单时顺带核对一次（内部有 20s 节流，不会打爆接口）
+    let sync = null;
+    try {
+        sync = await syncUserOrders(env, session.userId, { force: false });
+    } catch (e) {
+        console.error('syncUserOrders:', e && e.message);
+    }
+
+    const state = await getSubscriptionState(env, session.userId);
+    return jsonResponse({ ok: true, state, sync, ...supportPayload(env) });
+}
+
+// ---------------------------------------------------------------------------
+// 立即核对订单
+// ---------------------------------------------------------------------------
+export async function handleSubscriptionCheck(request, env) {
+    if (request.method !== 'POST') return methodNotAllowed();
+
+    const g = await guard(request, env, 'sub-check');
+    if (g.error) return g.error;
+
+    const sync = await syncUserOrders(env, g.session.userId, { force: true });
+    const state = await getSubscriptionState(env, g.session.userId);
+
+    const payload = {
+        ok: !!sync.ok,
+        code: sync.code,
+        message: sync.message || null,
+        linked: sync.linked || 0,
+        memberNo: g.session.userId,
+        state,
+        ...supportPayload(env)
+    };
+
+    if (!sync.ok) {
+        payload.message = payload.message || errorText(sync.code);
+    }
+    return jsonResponse(payload);
+}
+
+function errorText(code) {
+    switch (code) {
+        case 'not_configured': return '服务端尚未配置爱发电接口，请把会员编号发给客服人工开通';
+        case 'api_error': return '暂时无法连接爱发电查询订单，请稍后重试或联系客服';
+        default: return '订单核对失败，请稍后重试或联系客服';
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 激活 / 改预约时间
+// ---------------------------------------------------------------------------
+export async function handleSubscriptionActivate(request, env) {
+    if (request.method !== 'POST') return methodNotAllowed();
+
+    const g = await guard(request, env, 'sub-activate');
+    if (g.error) return g.error;
+
+    const body = await readJson(request);
+    const groupId = String(body.groupId || '').trim();
+    if (!groupId) return jsonResponse({ error: '缺少订单标识', code: 'bad_input' }, 400);
+
+    const owned = await env.DB.prepare(
+        "SELECT id FROM subscriptions WHERE user_id = ? AND group_id = ? AND status = 'pending' LIMIT 1"
+    ).bind(g.session.userId, groupId).first();
+    if (!owned) return jsonResponse({ error: '未找到待激活的权益', code: 'not_found' }, 404);
+
+    const activated = await activateGroup(env, g.session.userId, groupId);
+    const state = await getSubscriptionState(env, g.session.userId);
+    return jsonResponse({ ok: true, activated: activated.length, state });
+}
+
+export async function handleSubscriptionSchedule(request, env) {
+    if (request.method !== 'POST') return methodNotAllowed();
+
+    const g = await guard(request, env, 'sub-schedule');
+    if (g.error) return g.error;
+
+    const body = await readJson(request);
+    const groupId = String(body.groupId || '').trim();
+    if (!groupId) return jsonResponse({ error: '缺少订单标识', code: 'bad_input' }, 400);
+
+    const raw = Number(body.activateAt);
+    const now = Math.floor(Date.now() / 1000);
+    let activateAt = null;
+    if (Number.isFinite(raw) && raw > 0) {
+        activateAt = Math.floor(raw / 1000);
+        if (activateAt < now - 60) return jsonResponse({ error: '预约时间不能早于当前时间', code: 'bad_input' }, 400);
+        if (activateAt > now + 6 * 365 * 86400) return jsonResponse({ error: '预约时间过远', code: 'bad_input' }, 400);
+    }
+
+    const owned = await env.DB.prepare(
+        "SELECT id FROM subscriptions WHERE user_id = ? AND group_id = ? AND status = 'pending' LIMIT 1"
+    ).bind(g.session.userId, groupId).first();
+    if (!owned) return jsonResponse({ error: '未找到待激活的权益', code: 'not_found' }, 404);
+
+    await env.DB.prepare(
+        "UPDATE subscriptions SET activate_at = ?1, activate_mode = 'delayed', updated_at = ?2 WHERE user_id = ?3 AND group_id = ?4 AND status = 'pending'"
+    ).bind(activateAt, now, g.session.userId, groupId).run();
+
+    // 到点就直接激活，省得等下一次定时任务
+    if (activateAt && activateAt <= now) {
+        await activateGroup(env, g.session.userId, groupId, now);
+    }
+
+    const state = await getSubscriptionState(env, g.session.userId);
+    return jsonResponse({ ok: true, state });
+}
+
+// ---------------------------------------------------------------------------
+// 手动绑定订单号（兜底）
+// ---------------------------------------------------------------------------
+export async function handleSubscriptionBind(request, env) {
+    if (request.method !== 'POST') return methodNotAllowed();
+
+    const g = await guard(request, env, 'sub-bind');
+    if (g.error) return g.error;
+
+    const body = await readJson(request);
+    const res = await bindOrderByNo(env, g.session.userId, body.orderNo);
+
+    const state = await getSubscriptionState(env, g.session.userId);
+    return jsonResponse({
+        ok: !!res.ok,
+        code: res.code,
+        message: res.message || null,
+        memberNo: g.session.userId,
+        state,
+        ...supportPayload(env)
+    });
 }

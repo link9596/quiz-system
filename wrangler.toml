@@ -15,14 +15,45 @@ database_name = "quiz-db"
 database_id = "177b4029-1db3-4a10-80b4-83fcf7d24bc9"
 
 # ========== 定时任务 ==========
+# 0 3 * * *   ：清理过期数据
+# */15 * * * *：核对爱发电订单（付款后自动开通）、执行预约激活、标记过期
 [triggers]
-crons = ["0 3 * * *"]
+crons = ["0 3 * * *", "*/15 * * * *"]
 
-# ========== 变量 ==========
+# ========== 变量（非敏感配置）==========
+# 敏感项请用 secret 写入，不要写在这里：
+#   wrangler secret put AFDIAN_USER_ID
+#   wrangler secret put AFDIAN_TOKEN
+#   wrangler secret put PASSWORD_PEPPER
 [vars]
 ALLOWED_ORIGINS = ""
-AFDIAN_USER_ID = ""
-AFDIAN_TOKEN = ""
-AFDIAN_PLAN_MONTH = ""
-AFDIAN_PLAN_YEAR = ""
-PASSWORD_PEPPER = ""
+
+# ---- 爱发电 ----
+# API 基地址，留空则自动依次尝试 afdian.com / afdian.net / ifdian.net
+AFDIAN_API_BASE = ""
+# 用户点击下单时跳转的站点
+AFDIAN_ORDER_HOST = "https://ifdian.net"
+# 订单无法自动关联时是否允许按「同套餐 + 时间接近」兜底匹配
+# 默认 0（关闭）：只认下单链接里带上的 custom_order_id，避免把别人的订单匹配给你
+AFDIAN_FALLBACK_MATCH = "0"
+
+# ---- 三个套餐对应的爱发电方案 ID ----
+PLAN_K1 = "3b49790abaf411f1a7af52540025c377"
+PLAN_K2 = "3c128840baf411f1a55652540025c377"
+PLAN_K1K2 = "3cb96e6cbaf411f1819a52540025c377"
+
+# 爱发电返回的 month 缺失时的兜底时长（月），默认 1
+PLAN_MONTHS_K1 = "1"
+PLAN_MONTHS_K2 = "1"
+PLAN_MONTHS_K1K2 = "1"
+
+# ---- 客服信息（开通失败时弹窗展示给用户）----
+SUPPORT_CONTACT = "客服邮箱：support@example.com｜QQ：123456789"
+
+# ========== 可选：订阅接口限流（需要账号支持 Rate Limiting 绑定）==========
+# 前端在「等待支付」界面会每 8 秒核对一次订单，最多约 4 分钟。
+# 若启用该绑定，limit 请不低于 60/分钟，否则轮询会被 429 打断。
+# [[ratelimits]]
+# name = "SUB_RATE_LIMITER"
+# namespace_id = "1001"
+# simple = { limit = 60, period = 60 }

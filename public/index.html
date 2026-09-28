@@ -613,6 +613,325 @@ html.light-theme .sub-card {
 }
 .guest-card .gc-btn:active { transform: scale(.97); }
 
+/* ================= 会员卡片（银行卡样式 + 3D 悬浮）================= */
+.bank-card-wrap { perspective: 1100px; margin-bottom: 16px; }
+.bank-card {
+    position: relative;
+    border-radius: 18px;
+    padding: 16px 20px 18px;
+    min-height: 206px;
+    display: flex;
+    flex-direction: column;
+    color: #fff;
+    transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.22,.61,.36,1), box-shadow .35s;
+    background:
+        radial-gradient(120% 150% at 10% -10%, rgba(255,255,255,.24), transparent 46%),
+        linear-gradient(135deg, #6250e6 0%, #3b2f96 46%, #1d1846 100%);
+    box-shadow: 0 10px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.2);
+    border: 1px solid rgba(255,255,255,.14);
+    overflow: hidden;
+    will-change: transform;
+}
+.bank-card:hover { box-shadow: 0 24px 54px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.26); }
+.bank-card.is-pending {
+    background:
+        radial-gradient(120% 150% at 10% -10%, rgba(255,255,255,.26), transparent 46%),
+        linear-gradient(135deg, #e0a325 0%, #a06a10 48%, #4d3006 100%);
+}
+.bank-card.is-unpaid {
+    background:
+        radial-gradient(120% 150% at 10% -10%, rgba(255,255,255,.22), transparent 46%),
+        linear-gradient(135deg, #3f8fb8 0%, #265d80 48%, #12303f 100%);
+}
+.bank-card.is-expired, .bank-card.is-inactive {
+    background:
+        radial-gradient(120% 150% at 10% -10%, rgba(255,255,255,.14), transparent 46%),
+        linear-gradient(135deg, #41414d 0%, #26262e 50%, #151519 100%);
+}
+.bc-watermark {
+    position: absolute; right: -14px; bottom: -34px;
+    font-size: 132px; line-height: 1; opacity: .08;
+    transform: rotate(-12deg); pointer-events: none; user-select: none;
+}
+.bc-glare {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    transition: opacity .3s;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.30), transparent 58%);
+}
+.bank-card:hover .bc-glare { opacity: 1; }
+.bc-shine {
+    position: absolute; top: -60%; left: -70%;
+    width: 42%; height: 220%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.30), transparent);
+    transform: rotate(18deg);
+    transition: left .75s cubic-bezier(.22,.61,.36,1);
+    pointer-events: none;
+}
+.bank-card:hover .bc-shine { left: 130%; }
+.bc-top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; transform: translateZ(28px);
+}
+.bc-brand { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .6px; opacity: .95; min-width: 0; }
+.bc-logo {
+    width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+    background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.3);
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.bc-status {
+    font-size: 11px; font-weight: 700; letter-spacing: .4px;
+    padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+    background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.28);
+    backdrop-filter: blur(6px);
+}
+.bc-status.ok { background: rgba(16,185,129,.3); border-color: rgba(16,185,129,.55); }
+.bc-status.warn { background: rgba(245,179,1,.28); border-color: rgba(245,179,1,.55); }
+.bc-chip {
+    width: 38px; height: 28px; border-radius: 6px; margin: 14px 0 0;
+    transform: translateZ(32px);
+    background: linear-gradient(135deg, #f7e7a8, #cfa73f 45%, #f6ecc0 100%);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.18);
+    position: relative;
+}
+.bc-chip::after {
+    content: ''; position: absolute; inset: 6px 8px;
+    border-left: 1px solid rgba(0,0,0,.22); border-right: 1px solid rgba(0,0,0,.22);
+}
+.bc-number-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 14px;
+    transform: translateZ(34px);
+}
+.bc-number {
+    flex: 1; min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px; letter-spacing: 1.6px; font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0,0,0,.35);
+    word-break: break-all; line-height: 1.5;
+}
+.bc-copy {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.26);
+    color: #fff; cursor: pointer; font-size: 12px; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s;
+}
+.bc-copy:hover { background: rgba(255,255,255,.3); }
+.bc-copy svg { width: 15px; height: 15px; }
+.bc-bottom {
+    margin-top: auto; padding-top: 14px;
+    display: flex; align-items: flex-end; gap: 18px;
+    transform: translateZ(22px);
+}
+.bc-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.bc-field:last-child { text-align: right; align-items: flex-end; }
+.bc-label { font-size: 10px; letter-spacing: 1px; opacity: .68; text-transform: uppercase; }
+.bc-value { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.bc-value.mono { font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+.bc-note {
+    margin-top: 10px; font-size: 11.5px; opacity: .82; line-height: 1.6;
+    transform: translateZ(18px);
+    border-top: 1px dashed rgba(255,255,255,.22); padding-top: 8px;
+}
+
+/* ---------- 会员区块通用 ---------- */
+.sub-section {
+    background: var(--card-bg); border: 1px solid var(--border-color);
+    border-radius: 14px; padding: 16px; margin-bottom: 16px;
+    box-shadow: var(--shadow);
+}
+.sub-section-title {
+    font-size: 14px; font-weight: 800; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+}
+.sub-section-title .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-light); }
+.sub-section-title .count {
+    margin-left: auto; font-size: 11px; font-weight: 600; color: var(--text-secondary);
+}
+.sub-actions { display: flex; gap: 10px; margin-top: 12px; }
+.sub-btn {
+    flex: 1; padding: 12px; border-radius: 10px; cursor: pointer;
+    font-size: 14px; font-weight: 700; font-family: inherit;
+    background: var(--card-bg-2); color: var(--text-primary);
+    border: 1px solid var(--border-color); transition: all .2s;
+}
+.sub-btn.primary { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
+.sub-btn.ghost { background: none; }
+.sub-btn:active { transform: scale(.97); }
+.sub-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.sub-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px; border-radius: 10px;
+    background: var(--card-bg-2); border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+}
+.sub-item:last-child { margin-bottom: 0; }
+.sub-item-main { flex: 1; min-width: 0; }
+.sub-item-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.sub-item-meta { font-size: 12px; color: var(--text-secondary); line-height: 1.6; word-break: break-all; }
+.sub-item-badge {
+    flex-shrink: 0; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    background: rgba(245,179,1,.16); color: var(--fav-yellow);
+}
+.sub-item-badge.wait { background: rgba(59,130,246,.16); color: var(--info-blue); }
+.sub-item-badge.done { background: rgba(16,185,129,.16); color: var(--success-green); }
+.sub-item-btn {
+    flex-shrink: 0; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 700; font-family: inherit;
+    background: var(--accent-blue); border: none; color: #fff; transition: all .2s;
+}
+.sub-item-btn.ghost { background: none; border: 1px solid var(--border-color); color: var(--text-secondary); }
+.sub-item-btn:active { transform: scale(.95); }
+.sub-empty { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.sub-alert {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 12px; border-radius: 10px; margin-bottom: 12px;
+    background: rgba(255,117,117,.1); border: 1px solid rgba(255,117,117,.35);
+    font-size: 12.5px; line-height: 1.7; color: var(--text-primary);
+}
+.sub-alert .sa-icon { flex-shrink: 0; }
+
+/* ================= 购买 / 激活 / 客服 弹窗 ================= */
+.purchase-dialog, .activate-dialog, .support-dialog {
+    width: 100%; max-width: 420px; max-height: 88vh; overflow-y: auto;
+    background-color: var(--card-bg); border-radius: 16px;
+    padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    transform: scale(.94); transition: transform .25s cubic-bezier(.22,.61,.36,1);
+    border: 1px solid var(--border-color);
+}
+.dialog-overlay.show .purchase-dialog,
+.dialog-overlay.show .activate-dialog,
+.dialog-overlay.show .support-dialog { transform: scale(1); }
+.pd-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.pd-title { font-size: 16px; font-weight: 800; flex: 1; }
+.pd-close {
+    width: 30px; height: 30px; border-radius: 8px; background: none; border: none;
+    color: var(--text-secondary); font-size: 20px; line-height: 1; cursor: pointer;
+}
+.pd-close:hover { background: rgba(127,127,127,.15); }
+.pd-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin: 14px 0 8px; }
+.pd-label:first-child { margin-top: 0; }
+.plan-option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 14px; border-radius: 12px; margin-bottom: 9px;
+    background: var(--card-bg-2); border: 1.5px solid var(--border-color);
+    cursor: pointer; transition: all .2s;
+}
+.plan-option:hover { border-color: var(--accent-light); }
+.plan-option.active {
+    border-color: var(--accent-blue);
+    background: linear-gradient(135deg, rgba(81,70,182,.22), rgba(139,133,224,.08));
+}
+.plan-option .po-radio {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid var(--border-color); position: relative; transition: all .2s;
+}
+.plan-option.active .po-radio { border-color: var(--accent-blue); }
+.plan-option.active .po-radio::after {
+    content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent-blue);
+}
+.po-main { flex: 1; min-width: 0; }
+.po-name { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.po-desc { font-size: 12px; color: var(--text-secondary); }
+.po-tag {
+    flex-shrink: 0; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: rgba(81,70,182,.18); color: var(--accent-light);
+}
+.act-option {
+    display: flex; gap: 11px; align-items: flex-start;
+    padding: 12px 13px; border-radius: 12px; margin-bottom: 9px;
+    background: var(--card-bg-2); border: 1.5px solid var(--border-color);
+    cursor: pointer; transition: all .2s;
+}
+.act-option.active { border-color: var(--accent-blue); background: rgba(81,70,182,.12); }
+.act-option .ao-radio {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+    border: 2px solid var(--border-color); position: relative; transition: all .2s;
+}
+.act-option.active .ao-radio { border-color: var(--accent-blue); }
+.act-option.active .ao-radio::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent-blue); }
+.ao-title { font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
+.ao-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+.pd-date {
+    width: 100%; margin-top: 4px; padding: 11px 13px; border-radius: 10px;
+    background: var(--input-bg); border: 1px solid var(--input-border);
+    color: var(--text-primary); font-size: 14px; font-family: inherit; outline: none;
+    color-scheme: dark;
+}
+html.light-theme .pd-date { color-scheme: light; }
+.pd-date:focus { border-color: var(--accent-blue); }
+.pd-hint {
+    font-size: 11.5px; color: var(--text-secondary); line-height: 1.7;
+    margin-top: 8px; padding: 10px 12px; border-radius: 10px;
+    background: var(--card-bg-2); border: 1px dashed var(--border-color);
+}
+.pd-note { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+.pd-foot { display: flex; gap: 10px; margin-top: 18px; }
+.pd-foot .sub-btn { padding: 13px; }
+.pd-wait { text-align: center; padding: 10px 0 4px; }
+.pd-wait .pw-spinner {
+    width: 40px; height: 40px; margin: 6px auto 16px; border-radius: 50%;
+    border: 3px solid var(--border-color); border-top-color: var(--accent-blue);
+    animation: pwSpin .9s linear infinite;
+}
+@keyframes pwSpin { to { transform: rotate(360deg); } }
+.pd-wait .pw-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.pd-wait .pw-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.8; }
+.pw-order {
+    margin-top: 14px; padding: 11px 12px; border-radius: 10px;
+    background: var(--card-bg-2); border: 1px dashed var(--border-color);
+    font-size: 12px; color: var(--text-secondary); line-height: 1.8; text-align: left;
+}
+.pw-order b { color: var(--text-primary); font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: .5px; }
+.pd-done { text-align: center; padding: 8px 0 4px; }
+.pd-done .pdon-icon { font-size: 46px; margin-bottom: 12px; }
+
+.sd-icon { font-size: 40px; text-align: center; margin-bottom: 12px; }
+.sd-title { font-size: 16px; font-weight: 800; text-align: center; margin-bottom: 10px; }
+.sd-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.8; text-align: center; margin-bottom: 16px; }
+.sd-idbox {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px; border-radius: 12px; margin-bottom: 12px;
+    background: var(--card-bg-2); border: 1px solid var(--border-color);
+}
+.sd-idlabel { font-size: 11px; color: var(--text-secondary); margin-bottom: 3px; }
+.sd-id {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    letter-spacing: .6px; word-break: break-all; line-height: 1.5; font-weight: 600;
+}
+.sd-copy {
+    flex-shrink: 0; padding: 8px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--accent-blue); border: none; color: #fff;
+    font-size: 12px; font-weight: 700; font-family: inherit;
+}
+.sd-support {
+    padding: 12px; border-radius: 12px; margin-bottom: 14px;
+    background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3);
+    font-size: 13px; line-height: 1.8; white-space: pre-wrap; word-break: break-word;
+}
+.sd-bind { display: flex; gap: 8px; margin-bottom: 14px; }
+.sd-bind input {
+    flex: 1; min-width: 0; padding: 11px 12px; border-radius: 10px;
+    background: var(--input-bg); border: 1px solid var(--input-border);
+    color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;
+}
+.sd-bind input:focus { border-color: var(--accent-blue); }
+.sd-bind button {
+    flex-shrink: 0; padding: 11px 16px; border-radius: 10px; cursor: pointer;
+    background: var(--card-bg-2); border: 1px solid var(--border-color);
+    color: var(--text-primary); font-size: 13px; font-weight: 700; font-family: inherit;
+}
+.sd-actions { display: flex; gap: 10px; }
+.sd-actions .sub-btn { padding: 12px; }
+
+@media (max-width: 480px) {
+    .bank-card { min-height: 196px; padding: 14px 16px 16px; }
+    .bc-number { font-size: 12.5px; letter-spacing: 1.2px; }
+    .bc-bottom { gap: 10px; }
+    .bc-value { font-size: 13px; }
+}
+
 /* ================= 登录/注册对话框 ================= */
 .auth-dialog {
     width: 100%; max-width: 380px;
@@ -1210,6 +1529,56 @@ html.light-theme .sub-card {
         </div>
     </div>
 </div>
+
+<!-- ============ 开通 / 续费 ============ -->
+<div class="dialog-overlay" id="purchaseOverlay">
+    <div class="purchase-dialog">
+        <div class="pd-head">
+            <div class="pd-title" id="pdTitle">开通 / 续费会员</div>
+            <button class="pd-close" id="pdCloseBtn">&times;</button>
+        </div>
+        <div id="pdBody"></div>
+        <div class="pd-foot" id="pdFoot"></div>
+    </div>
+</div>
+
+<!-- ============ 激活待生效权益 ============ -->
+<div class="dialog-overlay" id="activateOverlay">
+    <div class="activate-dialog">
+        <div class="pd-head">
+            <div class="pd-title">激活权益</div>
+            <button class="pd-close" id="adCloseBtn">&times;</button>
+        </div>
+        <div id="adBody"></div>
+        <div class="pd-foot" id="adFoot"></div>
+    </div>
+</div>
+
+<!-- ============ 开通失败 / 联系客服 ============ -->
+<div class="dialog-overlay" id="supportOverlay">
+    <div class="support-dialog">
+        <div class="sd-icon" id="sdIcon">⚠️</div>
+        <div class="sd-title" id="sdTitle">自动开通未完成</div>
+        <div class="sd-desc" id="sdDesc"></div>
+        <div class="sd-idbox">
+            <div style="flex:1;min-width:0;">
+                <div class="sd-idlabel">会员编号（用户 ID）</div>
+                <div class="sd-id" id="sdId"></div>
+            </div>
+            <button class="sd-copy" id="sdCopyBtn">复制</button>
+        </div>
+        <div class="sd-support" id="sdSupportText" style="display:none;"></div>
+        <div class="sd-bind">
+            <input type="text" id="sdOrderInput" placeholder="已付款？粘贴爱发电订单号自动绑定" autocomplete="off">
+            <button id="sdBindBtn">绑定</button>
+        </div>
+        <div class="sd-actions">
+            <button class="sub-btn ghost" id="sdRetryBtn">重新检查</button>
+            <button class="sub-btn primary" id="sdOkBtn">知道了</button>
+        </div>
+    </div>
+</div>
+
 
 <script>
 /* =========================================================================
@@ -3846,34 +4215,120 @@ function openAuthDialog(mode = 'login') {
 }
 
 /* =========================================================================
- * 28. 我的页面
+ * 28. 我的页面 / 会员中心
  * ========================================================================= */
+const SUB_API = '/api/subscription';
+
+let subState = null;        // 最近一次订阅状态
+let subPlans = [];          // 套餐目录
+let subSupport = '';        // 客服联系方式
+let subConfigured = true;   // 服务端是否已配置爱发电
+let subPollTimer = null;    // 支付等待轮询
+let subErrorShown = false;  // 本次会话只自动弹一次开通失败提示
+let subLoading = false;
+let pdState = null;         // 购买弹窗状态
+let adState = null;         // 激活弹窗状态
+
+/* ---------------- 接口 ---------------- */
+async function subApi(path, options) {
+    const res = await fetch(SUB_API + path, Object.assign({ credentials: 'include' }, options || {}));
+    let data = {};
+    try { data = await res.json(); } catch (e) { data = {}; }
+    if (!res.ok && data.code === undefined) throw new Error(data.error || ('请求失败 (' + res.status + ')'));
+    return data;
+}
+function subPost(path, body) {
+    return subApi(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+}
+const apiSubState = () => subApi('/state');
+const apiSubPlans = () => subApi('/plans');
+const apiSubCreate = (plan, activateMode, activateAt) => subPost('/create', { plan, activateMode, activateAt });
+const apiSubCheck = () => subPost('/check', {});
+const apiSubActivate = (groupId) => subPost('/activate', { groupId });
+const apiSubSchedule = (groupId, activateAt) => subPost('/schedule', { groupId, activateAt });
+const apiSubBind = (orderNo) => subPost('/bind', { orderNo });
+
+/* ---------------- 展示工具 ---------------- */
+function pad2(n) { return String(n).padStart(2, '0'); }
+function formatDay(ms) {
+    const d = new Date(ms);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+function formatDateTime(ms) { return ms ? formatDate(ms) : '—'; }
+function toDateInput(ms) { return formatDay(ms); }
+function fromDateInput(v) {
+    if (!v) return null;
+    const parts = String(v).split('-').map(Number);
+    if (parts.length !== 3 || parts.some(n => !isFinite(n))) return null;
+    // 预约当天 00:00 生效
+    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0).getTime();
+}
+function formatMemberNo(id) {
+    const raw = String(id || '').replace(/[^0-9a-zA-Z]/g, '').toUpperCase();
+    if (!raw) return '—';
+    // 按银行卡习惯每 8 位一组
+    return raw.replace(/(.{8})/g, '$1 ').trim();
+}
+function copyIconSvg() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+}
+async function copyText(text) {
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+    } catch (e) { /* 回退 */ }
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+    } catch (e) { return false; }
+}
+function currentMemberNo() {
+    const user = getCurrentUser() || {};
+    return (subState && subState.memberNo) || user.id || '未知';
+}
+function subStatusInfo(st) {
+    switch (st && st.status) {
+        case 'active':   return { cls: '',            badge: 'ok',   label: '生效中',  text: '剩余 ' + (st.daysLeft || 0) + ' 天', icon: '✈' };
+        case 'pending':  return { cls: 'is-pending',  badge: 'warn', label: '待激活',  text: '已有未激活权益', icon: '🎫' };
+        case 'unpaid':   return { cls: 'is-unpaid',   badge: 'warn', label: '待支付',  text: '订单等待支付', icon: '⏳' };
+        case 'expired':  return { cls: 'is-expired',  badge: '',     label: '已过期',  text: '会员已过期', icon: '✈' };
+        default:         return { cls: 'is-inactive', badge: '',     label: '未开通',  text: '未开通会员', icon: '✈' };
+    }
+}
+
+/* ---------------- 页面 ---------------- */
 function renderProfile() {
     const container = document.getElementById('profileContent');
     const user = getCurrentUser();
 
     if (!user) {
+        subState = null;
+        subErrorShown = false;
         container.innerHTML = `
             <div class="guest-card">
                 <div class="gc-icon">👤</div>
                 <div class="gc-title">未登录</div>
-                <div class="gc-desc">登录后可同步做题记录、收藏、错题本和模考历史到云端，跨设备无缝衔接。</div>
+                <div class="gc-desc">登录后可同步做题记录、收藏、错题本和模考历史到云端，跨设备无缝衔接；登录后还能开通会员题库。</div>
                 <div class="gc-actions">
                     <button class="gc-btn" id="guestRegisterBtn">注册账号</button>
                     <button class="gc-btn primary" id="guestLoginBtn">登录</button>
                 </div>
-            </div>
-        `;
+            </div>`;
         container.querySelector('#guestLoginBtn').onclick = () => openAuthDialog('login');
         container.querySelector('#guestRegisterBtn').onclick = () => openAuthDialog('register');
         return;
     }
 
     const initial = (user.nickname || user.email || 'U').charAt(0).toUpperCase();
-    const sub = user.subscription || { status: 'inactive' };
-    const now = Date.now();
-    const isActive = sub.status === 'active' && (sub.expireAt || 0) > now;
-
     container.innerHTML = `
         <div class="profile-card">
             <div class="profile-avatar">${escapeHtml(initial)}</div>
@@ -3883,40 +4338,856 @@ function renderProfile() {
             </div>
             <button class="profile-logout" id="profileLogoutBtn">退出</button>
         </div>
-
-        <div class="sub-card">
-            <div class="sub-card-title">会员订阅</div>
-            <div class="sub-card-desc">
-                解锁云端同步、无限模考记录、跨设备访问等全部功能。
-                通过爱发电购买后自动开通。
-            </div>
-            <div class="sub-card-status ${isActive ? '' : 'inactive'}">
-                ${isActive
-                    ? `已订阅 · ${formatDate(sub.expireAt)} 到期`
-                    : '未订阅'}
-            </div>
-            <button class="sub-card-btn" id="subCardBtn">
-                ${isActive ? '续费 / 升级' : '立即开通'}
-            </button>
-        </div>
-    `;
+        <div id="subPanel">
+            <div class="sub-section"><div class="sub-empty">正在加载会员信息…</div></div>
+        </div>`;
 
     container.querySelector('#profileLogoutBtn').onclick = async () => {
         const ok = await confirmDialog('退出登录', '确定要退出登录吗？未同步的本地记录将保留在本设备。');
         if (!ok) return;
+        stopSubPolling();
+        subState = null;
+        subErrorShown = false;
         await apiLogout();
         renderProfile();
     };
 
-    container.querySelector('#subCardBtn').onclick = () => {
-        // 跳转爱发电下单页，携带用户 ID
-        // 这里先给出一个占位提示
-        const userId = user.id || user.userId;
-        alertDialog('即将开放', '订阅功能正在接入爱发电，敬请期待。\n\n您的账号 ID：' + (userId || '未知'));
-        // 实际接入后：
-        // location.href = `https://afdian.net/@yourname?remark=${userId}`;
+    loadSubscription(true);
+}
+
+async function loadSubscription(autoShowError) {
+    if (subLoading) return;
+    subLoading = true;
+    const panel = document.getElementById('subPanel');
+    if (panel && !subState) panel.innerHTML = '<div class="sub-section"><div class="sub-empty">正在加载会员信息…</div></div>';
+    try {
+        const data = await apiSubState();
+        if (data.support) subSupport = data.support;
+        if (data.state) applySubState(data.state);
+        else if (panel) panel.innerHTML = '<div class="sub-section"><div class="sub-empty">暂时无法获取会员信息</div></div>';
+    } catch (e) {
+        if (panel) panel.innerHTML = '<div class="sub-section"><div class="sub-empty">会员信息加载失败：' + escapeHtml(e.message || '') + '</div></div>';
+    } finally {
+        subLoading = false;
+    }
+    if (autoShowError) maybeAutoShowSubError();
+}
+
+function applySubState(state) {
+    subState = state;
+    if (state.support) subSupport = state.support;
+    const u = getCurrentUser();
+    if (u) {
+        const summary = {
+            status: state.status, plan: state.planKey, planName: state.planName,
+            expireAt: state.expireAt, daysLeft: state.daysLeft, memberNo: state.memberNo
+        };
+        try {
+            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(Object.assign({}, u, { subscription: summary })));
+        } catch (e) { /* 忽略 */ }
+    }
+    renderSubPanel();
+}
+
+function renderSubPanel() {
+    const panel = document.getElementById('subPanel');
+    if (!panel) return;
+    const user = getCurrentUser() || {};
+    const st = subState || { status: 'inactive', subjects: {}, pending: [], unpaid: [], history: [], activeGroups: [] };
+    const info = subStatusInfo(st);
+    const memberNo = st.memberNo || user.id || '';
+
+    const planName = st.status === 'active'
+        ? (st.planName || '会员')
+        : (st.status === 'expired' ? (st.planName && st.planName !== '会员' ? st.planName + '（已过期）' : '会员已过期') : '未开通');
+
+    let note = '';
+    if (st.status === 'active') {
+        const k1 = st.subjects && st.subjects.k1;
+        const k2 = st.subjects && st.subjects.k2;
+        if (k1 && k2 && k1 !== k2) {
+            note = '科目一 至 ' + formatDay(k1) + ' · 科目二 至 ' + formatDay(k2);
+        } else if (st.activeGroups && st.activeGroups.length > 1) {
+            note = '共 ' + st.activeGroups.length + ' 笔权益叠加中，到期时间自动顺延';
+        } else {
+            note = '剩余 ' + (st.daysLeft || 0) + ' 天 · 可随时续约叠加时长';
+        }
+    } else if (st.status === 'pending') {
+        note = '有 ' + st.pending.length + ' 笔权益已购买但未激活，激活后开始计算时长';
+    } else if (st.status === 'unpaid') {
+        note = '有 ' + st.unpaid.length + ' 笔订单等待支付，付款后自动开通';
+    } else if (st.status === 'expired') {
+        note = '会员已于 ' + (st.expireAt ? formatDay(st.expireAt) : '') + ' 到期，续约后立即恢复';
+    } else {
+        note = '开通后可解锁对应科目的必做题库';
+    }
+
+    const cardHtml = `
+        <div class="bank-card-wrap" id="bankCardWrap">
+            <div class="bank-card ${info.cls}" id="bankCard">
+                <div class="bc-watermark">${info.icon}</div>
+                <div class="bc-top">
+                    <div class="bc-brand"><span class="bc-logo">✈</span><span>航线题库 · 会员卡</span></div>
+                    <div class="bc-status ${info.badge}">${info.label}</div>
+                </div>
+                <div class="bc-chip"></div>
+                <div class="bc-number-row">
+                    <div class="bc-number" id="bcNumber">${escapeHtml(formatMemberNo(memberNo))}</div>
+                    <button class="bc-copy" id="bcCopyBtn" title="复制会员编号">${copyIconSvg()}</button>
+                </div>
+                <div class="bc-bottom">
+                    <div class="bc-field"><span class="bc-label">套餐</span><span class="bc-value">${escapeHtml(planName)}</span></div>
+                    <div class="bc-field"><span class="bc-label">有效期至</span><span class="bc-value mono">${st.expireAt ? formatDay(st.expireAt) : '—'}</span></div>
+                    <div class="bc-field"><span class="bc-label">持卡人</span><span class="bc-value">${escapeHtml(user.nickname || '会员')}</span></div>
+                </div>
+                <div class="bc-note">${escapeHtml(note)}</div>
+                <div class="bc-glare" id="bcGlare"></div>
+                <div class="bc-shine"></div>
+            </div>
+        </div>`;
+
+    // 待激活权益
+    let pendingHtml = '';
+    if (st.pending && st.pending.length) {
+        pendingHtml = `
+        <div class="sub-section">
+            <div class="sub-section-title"><span class="dot"></span>待激活权益<span class="count">${st.pending.length} 笔</span></div>
+            ${st.pending.map(p => `
+                <div class="sub-item">
+                    <div class="sub-item-main">
+                        <div class="sub-item-title">${escapeHtml(p.planName)} · ${p.months} 个月</div>
+                        <div class="sub-item-meta">
+                            支付时间 ${formatDateTime(p.paidAt)}${p.orderNo ? ' · 订单 ' + escapeHtml(p.orderNo) : ''}<br>
+                            ${p.activateAt ? '预约激活：' + formatDateTime(p.activateAt) : '未预约时间，可随时手动激活'}
+                        </div>
+                    </div>
+                    <button class="sub-item-btn" data-activate="${escapeHtml(p.groupId)}">激活</button>
+                </div>`).join('')}
+        </div>`;
+    }
+
+    // 待支付订单
+    let unpaidHtml = '';
+    if (st.unpaid && st.unpaid.length) {
+        const errBanner = st.lastError ? `
+            <div class="sub-alert">
+                <span class="sa-icon">⚠️</span>
+                <div>最近一次自动核对订单失败：${escapeHtml(st.lastError.message || '网络异常')}。
+                <a href="javascript:void(0)" id="subErrDetail" style="color:var(--accent-light);">查看客服信息</a></div>
+            </div>` : '';
+        unpaidHtml = `
+        <div class="sub-section">
+            <div class="sub-section-title"><span class="dot"></span>待支付订单<span class="count">${st.unpaid.length} 笔</span></div>
+            ${errBanner}
+            ${st.unpaid.map(p => `
+                <div class="sub-item">
+                    <div class="sub-item-main">
+                        <div class="sub-item-title">${escapeHtml(p.planName)} · ${p.months} 个月</div>
+                        <div class="sub-item-meta">
+                            下单于 ${formatDateTime(p.createdAt)} · 关联码 ${escapeHtml(p.customId)}<br>
+                            ${p.activateMode === 'delayed' ? (p.activateAt ? '付款后预约激活：' + formatDateTime(p.activateAt) : '付款后暂不激活，稍后手动激活') : '付款后立即生效'}
+                        </div>
+                    </div>
+                    <button class="sub-item-btn ghost" data-pay="${escapeHtml(p.customId)}">继续支付</button>
+                </div>`).join('')}
+            <div class="sub-actions">
+                <button class="sub-btn" id="subCheckBtn">我已支付，立即检查</button>
+            </div>
+        </div>`;
+    }
+
+    // 购买记录
+    let historyHtml = '';
+    const past = st.history || [];
+    if (past.length) {
+        historyHtml = `
+        <div class="sub-section">
+            <div class="sub-section-title"><span class="dot"></span>历史记录<span class="count">${past.length} 笔</span></div>
+            ${past.map(h => `
+                <div class="sub-item">
+                    <div class="sub-item-main">
+                        <div class="sub-item-title">${escapeHtml(h.planName || h.subjectLabel || '会员')} · ${h.months} 个月</div>
+                        <div class="sub-item-meta">${formatDay(h.startAt)} ~ ${formatDay(h.expireAt)}${h.orderNo ? ' · ' + escapeHtml(h.orderNo) : ''}</div>
+                    </div>
+                    <span class="sub-item-badge" style="background:rgba(127,127,127,.16);color:var(--text-secondary);">已结束</span>
+                </div>`).join('')}
+        </div>`;
+    }
+
+    const hasActive = st.status === 'active';
+    const actionLabel = hasActive ? '续约 / 叠加套餐' : (st.status === 'pending' ? '再买一份' : '立即开通');
+
+    panel.innerHTML = cardHtml + pendingHtml + unpaidHtml + `
+        <div class="sub-section">
+            <div class="sub-section-title"><span class="dot"></span>会员服务</div>
+            <div class="sub-empty">
+                科目一必做题库、科目二必做题库、科目一 + 科目二组合套餐，通过爱发电付款后自动开通，
+                到期时间按爱发电返回的订阅时长计算。
+            </div>
+            <div class="sub-actions">
+                <button class="sub-btn primary" id="subBuyBtn">${actionLabel}</button>
+                <button class="sub-btn ghost" id="subRefreshBtn">刷新状态</button>
+            </div>
+        </div>` + historyHtml;
+
+    // ---- 事件绑定 ----
+    bindBankCard3D();
+
+    const copyBtn = panel.querySelector('#bcCopyBtn');
+    if (copyBtn) {
+        copyBtn.onclick = async () => {
+            const ok = await copyText(memberNo);
+            copyBtn.innerHTML = ok ? '✓' : '✕';
+            setTimeout(() => { copyBtn.innerHTML = copyIconSvg(); }, 1400);
+        };
+    }
+    const numberEl = panel.querySelector('#bcNumber');
+    if (numberEl) numberEl.onclick = () => copyBtn && copyBtn.onclick();
+
+    const buyBtn = panel.querySelector('#subBuyBtn');
+    if (buyBtn) buyBtn.onclick = () => openPurchaseDialog();
+
+    const refreshBtn = panel.querySelector('#subRefreshBtn');
+    if (refreshBtn) {
+        refreshBtn.onclick = async () => {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '检查中…';
+            await refreshSubState(false);
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '刷新状态';
+        };
+    }
+
+    const checkBtn = panel.querySelector('#subCheckBtn');
+    if (checkBtn) {
+        checkBtn.onclick = async () => {
+            checkBtn.disabled = true;
+            checkBtn.textContent = '正在向爱发电核对…';
+            const d = await checkPayment(false);
+            checkBtn.disabled = false;
+            checkBtn.textContent = '我已支付，立即检查';
+            if (d && d.ok && d.linked) {
+                alertDialog('开通成功', '已为你自动开通，感谢支持！');
+            } else if (d && d.ok && !d.linked) {
+                alertDialog('暂未查到支付记录', '爱发电还没有返回这笔订单的支付结果。\n若已付款，请稍等 1~2 分钟后重试，或点击「查看客服信息」联系客服人工开通。');
+            }
+        };
+    }
+
+    panel.querySelectorAll('[data-activate]').forEach(btn => {
+        btn.onclick = () => openActivateDialog(btn.getAttribute('data-activate'));
+    });
+    panel.querySelectorAll('[data-pay]').forEach(btn => {
+        btn.onclick = () => {
+            const p = (subState.unpaid || []).find(x => x.customId === btn.getAttribute('data-pay'));
+            if (!p) return;
+            if (p.url) openExternal(p.url);
+            else alertDialog('提示', '支付链接已失效，请重新下单。');
+        };
+    });
+    const errLink = panel.querySelector('#subErrDetail');
+    if (errLink) errLink.onclick = () => showSupportDialog({
+        title: '自动开通未完成',
+        desc: (subState.lastError && subState.lastError.message) || '暂时无法连接爱发电查询订单。',
+        memberNo
+    });
+}
+
+async function refreshSubState(quiet) {
+    try {
+        const d = await apiSubCheck();
+        if (d.support) subSupport = d.support;
+        if (d.state) applySubState(d.state);
+        if (!d.ok && !quiet) {
+            showSupportDialog({ title: '订单核对失败', desc: d.message || '暂时无法连接爱发电查询订单。', memberNo: d.memberNo || currentMemberNo() });
+        }
+        return d;
+    } catch (e) {
+        if (!quiet) alertDialog('检查失败', e.message || '网络异常');
+        return null;
+    }
+}
+
+function maybeAutoShowSubError() {
+    if (subErrorShown || !subState) return;
+    const hasUnpaid = subState.unpaid && subState.unpaid.length;
+    if (!hasUnpaid || !subState.lastError) return;
+    subErrorShown = true;
+    showSupportDialog({
+        title: '自动开通未完成',
+        desc: subState.lastError.message || '暂时无法连接爱发电查询订单，请把下方会员编号发送给客服人工开通。',
+        memberNo: currentMemberNo()
+    });
+}
+
+/* ---------------- 银行卡 3D 悬浮 ---------------- */
+function bindBankCard3D() {
+    const wrap = document.getElementById('bankCardWrap');
+    const card = document.getElementById('bankCard');
+    const glare = document.getElementById('bcGlare');
+    if (!wrap || !card) return;
+
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const noHover = window.matchMedia && window.matchMedia('(hover: none)').matches;
+    if (reduce || noHover) return;
+
+    let raf = null;
+    wrap.addEventListener('mousemove', (e) => {
+        const r = card.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+        const py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+        const ry = ((px - 0.5) * 18).toFixed(2);
+        const rx = ((0.5 - py) * 14).toFixed(2);
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+            card.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg) translateZ(14px) scale(1.02)';
+            if (glare) {
+                glare.style.background = 'radial-gradient(circle at ' + (px * 100).toFixed(1) + '% ' +
+                    (py * 100).toFixed(1) + '%, rgba(255,255,255,.34), transparent 58%)';
+            }
+        });
+    });
+    wrap.addEventListener('mouseleave', () => {
+        if (raf) cancelAnimationFrame(raf);
+        card.style.transform = '';
+        if (glare) glare.style.background = '';
+    });
+}
+
+/* ---------------- 购买弹窗 ---------------- */
+function openExternal(url) {
+    try {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } catch (e) {
+        window.open(url, '_blank', 'noopener');
+    }
+}
+
+async function openPurchaseDialog() {
+    const overlay = document.getElementById('purchaseOverlay');
+    if (!overlay) return;
+    stopSubPolling();
+    pdState = { step: 'choose', plan: null, mode: 'immediate', date: '', noDate: false, busy: false, pollCount: 0, before: subState };
+    overlay.classList.add('show');
+
+    const body = document.getElementById('pdBody');
+    const foot = document.getElementById('pdFoot');
+    body.innerHTML = '<div class="sub-empty">正在加载套餐…</div>';
+    foot.innerHTML = '';
+
+    if (!subPlans.length) {
+        try {
+            const d = await apiSubPlans();
+            subPlans = d.plans || [];
+            if (d.support) subSupport = d.support;
+            subConfigured = d.configured !== false;
+        } catch (e) {
+            body.innerHTML = '<div class="sub-empty">套餐加载失败：' + escapeHtml(e.message || '') + '</div>';
+            foot.innerHTML = '<button class="sub-btn" id="pdCloseOnly">关闭</button>';
+            const b = foot.querySelector('#pdCloseOnly');
+            if (b) b.onclick = closePurchaseDialog;
+            return;
+        }
+    }
+    if (!subPlans.length) {
+        body.innerHTML = '<div class="sub-empty">暂无可购买的套餐</div>';
+        foot.innerHTML = '<button class="sub-btn" id="pdCloseOnly">关闭</button>';
+        const b = foot.querySelector('#pdCloseOnly');
+        if (b) b.onclick = closePurchaseDialog;
+        return;
+    }
+
+    const active = (subState && subState.status === 'active' && subState.planKey) ? subState.planKey : null;
+    const fallback = subPlans.find(p => p.key === 'k1k2') || subPlans[0];
+    pdState.plan = active && subPlans.some(p => p.key === active) ? active : fallback.key;
+
+    const baseExpire = subState && subState.expireAt && subState.expireAt > Date.now() ? subState.expireAt : Date.now();
+    pdState.date = toDateInput(baseExpire);
+
+    renderPurchaseStep();
+}
+
+function closePurchaseDialog() {
+    stopSubPolling();
+    const overlay = document.getElementById('purchaseOverlay');
+    if (overlay) overlay.classList.remove('show');
+    pdState = null;
+}
+
+function renderPurchaseStep() {
+    const body = document.getElementById('pdBody');
+    const foot = document.getElementById('pdFoot');
+    if (!body || !foot || !pdState) return;
+
+    if (pdState.step === 'wait') return renderPurchaseWait();
+    if (pdState.step === 'done') return renderPurchaseDone();
+
+    const mode = pdState.mode;
+    const dateValue = pdState.date || toDateInput(Date.now());
+    const minDate = toDateInput(Date.now());
+
+    body.innerHTML = `
+        <div class="pd-label">选择套餐</div>
+        ${subPlans.map(p => `
+            <div class="plan-option ${pdState.plan === p.key ? 'active' : ''}" data-plan="${p.key}">
+                <div class="po-radio"></div>
+                <div class="po-main">
+                    <div class="po-name">${escapeHtml(p.name)}</div>
+                    <div class="po-desc">解锁「${escapeHtml(p.subjectLabel)}」必做题库 · 时长 ${p.months} 个月起</div>
+                </div>
+                ${p.key === 'k1k2' ? '<span class="po-tag">推荐</span>' : ''}
+            </div>`).join('')}
+
+        <div class="pd-label">开通方式</div>
+        <div class="act-option ${mode === 'immediate' ? 'active' : ''}" data-mode="immediate">
+            <div class="ao-radio"></div>
+            <div>
+                <div class="ao-title">立即激活</div>
+                <div class="ao-desc">付款后立即生效。若当前会员未到期，时长自动从到期日往后叠加，不会浪费。</div>
+            </div>
+        </div>
+        <div class="act-option ${mode === 'delayed' ? 'active' : ''}" data-mode="delayed">
+            <div class="ao-radio"></div>
+            <div>
+                <div class="ao-title">延迟激活</div>
+                <div class="ao-desc">付款后先存在卡片上显示「已有未激活」，可预约时间自动生效，也可稍后随时手动激活。</div>
+            </div>
+        </div>
+
+        ${mode === 'delayed' ? `
+            <div class="pd-label">激活时间</div>
+            <input type="date" class="pd-date" id="pdDate" min="${minDate}" value="${dateValue}" ${pdState.noDate ? 'disabled' : ''}>
+            <label class="act-option ${pdState.noDate ? 'active' : ''}" id="pdNoDateLabel" style="margin-top:9px;">
+                <input type="checkbox" id="pdNoDate" ${pdState.noDate ? 'checked' : ''} style="margin-top:3px;">
+                <div>
+                    <div class="ao-title">暂不指定时间</div>
+                    <div class="ao-desc">付款后一直保留为「未激活」，需要时再点卡片上的「激活」。</div>
+                </div>
+            </label>` : ''}
+
+        <div class="pd-hint">
+            前往爱发电完成支付，系统会自动查询订单并开通，无需回来手动操作。<br>
+            会员编号：<b style="font-family:ui-monospace,Menlo,monospace;">${escapeHtml(currentMemberNo())}</b>
+        </div>`;
+
+    foot.innerHTML = `
+        <button class="sub-btn ghost" id="pdCancel">取消</button>
+        <button class="sub-btn primary" id="pdConfirm">去爱发电支付</button>`;
+
+    body.querySelectorAll('[data-plan]').forEach(el => {
+        el.onclick = () => {
+            if (pdState.mode === 'delayed') {
+                const di = document.getElementById('pdDate');
+                if (di && !pdState.noDate) pdState.date = di.value;
+            }
+            pdState.plan = el.getAttribute('data-plan');
+            renderPurchaseStep();
+        };
+    });
+    body.querySelectorAll('[data-mode]').forEach(el => {
+        el.onclick = () => {
+            const di = document.getElementById('pdDate');
+            if (di && !pdState.noDate) pdState.date = di.value;
+            pdState.mode = el.getAttribute('data-mode');
+            renderPurchaseStep();
+        };
+    });
+    const dateInput = body.querySelector('#pdDate');
+    if (dateInput) dateInput.onchange = () => { pdState.date = dateInput.value; };
+    const noDate = body.querySelector('#pdNoDate');
+    if (noDate) {
+        noDate.onchange = () => {
+            if (dateInput && !pdState.noDate) pdState.date = dateInput.value;
+            pdState.noDate = noDate.checked;
+            renderPurchaseStep();
+        };
+    }
+    foot.querySelector('#pdCancel').onclick = closePurchaseDialog;
+    foot.querySelector('#pdConfirm').onclick = createOrderAndPay;
+}
+
+async function createOrderAndPay() {
+    if (!pdState || pdState.busy) return;
+    const btn = document.getElementById('pdConfirm');
+    if (pdState.mode === 'delayed' && !pdState.noDate) {
+        const di = document.getElementById('pdDate');
+        if (di) pdState.date = di.value;
+        if (!pdState.date) { alertDialog('提示', '请选择预约激活时间，或勾选「暂不指定时间」'); return; }
+    }
+    pdState.busy = true;
+    if (btn) { btn.disabled = true; btn.textContent = '正在创建订单…'; }
+
+    const activateMode = pdState.mode === 'delayed' ? 'delayed' : 'immediate';
+    let activateAt = null;
+    if (activateMode === 'delayed' && !pdState.noDate) {
+        activateAt = fromDateInput(pdState.date);
+    }
+
+    try {
+        const d = await apiSubCreate(pdState.plan, activateMode, activateAt);
+        if (!d.ok) throw new Error(d.error || '创建订单失败');
+        pdState.customId = d.customId;
+        pdState.url = d.url;
+        pdState.planInfo = d.plan;
+        pdState.step = 'wait';
+        openExternal(d.url);
+        renderPurchaseStep();
+        startSubPolling();
+    } catch (e) {
+        pdState.busy = false;
+        if (btn) { btn.disabled = false; btn.textContent = '去爱发电支付'; }
+        if (e && /503|未配置|配置/.test(String(e.message || ''))) {
+            showSupportDialog({ title: '支付通道暂不可用', desc: String(e.message || ''), memberNo: currentMemberNo() });
+        } else {
+            alertDialog('下单失败', e.message || '请稍后重试');
+        }
+    }
+}
+
+function renderPurchaseWait() {
+    const body = document.getElementById('pdBody');
+    const foot = document.getElementById('pdFoot');
+    const modeText = pdState.planInfo
+        ? (pdState.mode === 'delayed'
+            ? (pdState.noDate ? '付款后暂不激活（稍后手动激活）' : '付款后预约 ' + pdState.date + ' 激活')
+            : '付款后立即生效')
+        : '';
+
+    body.innerHTML = `
+        <div class="pd-wait">
+            <div class="pw-spinner"></div>
+            <div class="pw-title">等待支付结果</div>
+            <div class="pw-desc">
+                已为你打开爱发电下单页，<br>完成支付后系统会自动查询订单并开通，无需手动操作。
+            </div>
+            <div class="pw-order">
+                套餐：<b>${escapeHtml(pdState.planInfo ? pdState.planInfo.name : '')}</b><br>
+                开通方式：<b>${escapeHtml(modeText)}</b><br>
+                订单关联码：<b>${escapeHtml(pdState.customId || '')}</b>
+            </div>
+            <div class="pd-hint" style="text-align:left;">
+                如果支付页没有自动打开，请点下方「重新打开支付页」。<br>
+                支付完成后一般 5~30 秒内自动开通。
+            </div>
+        </div>`;
+
+    foot.innerHTML = `
+        <button class="sub-btn ghost" id="pdReopen">重新打开支付页</button>
+        <button class="sub-btn primary" id="pdCheckNow">我已支付，立即检查</button>`;
+
+    foot.querySelector('#pdReopen').onclick = () => { if (pdState.url) openExternal(pdState.url); };
+    foot.querySelector('#pdCheckNow').onclick = async () => {
+        const b = foot.querySelector('#pdCheckNow');
+        b.disabled = true;
+        b.textContent = '核对中…';
+        await checkPayment(false);
+        if (pdState && pdState.step === 'wait') {
+            b.disabled = false;
+            b.textContent = '我已支付，立即检查';
+        }
     };
 }
+
+function renderPurchaseDone(activated) {
+    const body = document.getElementById('pdBody');
+    const foot = document.getElementById('pdFoot');
+    const st = subState || {};
+    body.innerHTML = `
+        <div class="pd-done">
+            <div class="pdon-icon">${activated ? '🎉' : '✅'}</div>
+            <div class="pw-title">${activated ? '开通成功' : '购买成功，权益已入账'}</div>
+            <div class="pw-desc">
+                ${activated
+                    ? '会员已生效，有效期至 <b>' + escapeHtml(st.expireAt ? formatDay(st.expireAt) : '') + '</b>'
+                    : '已记录为「未激活」，可在卡片下方选择激活时间'}
+            </div>
+            <div class="pw-order" style="text-align:left;">
+                套餐：<b>${escapeHtml(st.planName || (pdState.planInfo ? pdState.planInfo.name : ''))}</b><br>
+                ${activated ? '有效期至：<b>' + escapeHtml(st.expireAt ? formatDay(st.expireAt) : '') + '</b>' : ''}
+            </div>
+        </div>`;
+    foot.innerHTML = '<button class="sub-btn primary" id="pdFinish">完成</button>';
+    foot.querySelector('#pdFinish').onclick = closePurchaseDialog;
+}
+
+/* ---------------- 支付轮询 ---------------- */
+function startSubPolling() {
+    stopSubPolling();
+    if (pdState) pdState.pollCount = 0;
+    subPollTimer = setInterval(async () => {
+        if (!pdState || pdState.step !== 'wait') { stopSubPolling(); return; }
+        pdState.pollCount++;
+        if (pdState.pollCount > 30) { stopSubPolling(); return; }   // 约 4 分钟
+        await checkPayment(true);
+    }, 8000);
+}
+function stopSubPolling() {
+    if (subPollTimer) { clearInterval(subPollTimer); subPollTimer = null; }
+}
+
+async function checkPayment(quiet) {
+    let d;
+    try {
+        d = await apiSubCheck();
+    } catch (e) {
+        if (!quiet) alertDialog('检查失败', e.message || '网络异常');
+        return null;
+    }
+    if (!d) return null;
+    if (d.support) subSupport = d.support;
+    if (d.state) applySubState(d.state);
+
+    if (!d.ok) {
+        // 轮询期间偶发失败不打扰用户，连续 3 次失败或用户主动查询时才弹客服窗
+        if (pdState) pdState.failCount = (pdState.failCount || 0) + 1;
+        const fails = pdState ? pdState.failCount : 1;
+        if (!quiet || fails >= 3) {
+            stopSubPolling();
+            if (pdState) pdState.busy = false;
+            showSupportDialog({
+                title: '自动开通未完成',
+                desc: d.message || '暂时无法连接爱发电查询订单，请把下方会员编号发送给客服人工开通。',
+                memberNo: d.memberNo || currentMemberNo()
+            });
+        }
+        return d;
+    }
+    if (pdState) pdState.failCount = 0;
+
+    const before = pdState ? pdState.before : null;
+    const st = d.state || {};
+    const changed =
+        (d.linked > 0) ||
+        (before && st.expireAt && st.expireAt !== before.expireAt) ||
+        (before && (st.pending || []).length > (before.pending || []).length) ||
+        (!before && (st.status === 'active' || st.status === 'pending'));
+
+    if (changed && pdState && pdState.step === 'wait') {
+        stopSubPolling();
+        pdState.step = 'done';
+        pdState.busy = false;
+        renderPurchaseDone(st.status === 'active');
+    }
+    return d;
+}
+
+/* ---------------- 激活弹窗 ---------------- */
+function openActivateDialog(groupId) {
+    const overlay = document.getElementById('activateOverlay');
+    if (!overlay) return;
+    const item = (subState && subState.pending || []).find(p => p.groupId === groupId);
+    if (!item) return;
+
+    const baseExpire = subState.expireAt && subState.expireAt > Date.now() ? subState.expireAt : Date.now();
+    adState = {
+        groupId,
+        item,
+        mode: item.activateAt ? 'at' : 'now',
+        date: toDateInput(item.activateAt || baseExpire),
+        busy: false
+    };
+    overlay.classList.add('show');
+    renderActivateDialog();
+}
+
+function closeActivateDialog() {
+    const overlay = document.getElementById('activateOverlay');
+    if (overlay) overlay.classList.remove('show');
+    adState = null;
+}
+
+function renderActivateDialog() {
+    const body = document.getElementById('adBody');
+    const foot = document.getElementById('adFoot');
+    if (!body || !foot || !adState) return;
+    const it = adState.item;
+    const minDate = toDateInput(Date.now());
+
+    body.innerHTML = `
+        <div class="pd-hint" style="margin-top:0;">
+            <b>${escapeHtml(it.planName)}</b> · ${it.months} 个月<br>
+            支付时间 ${formatDateTime(it.paidAt)}${it.orderNo ? ' · 订单 ' + escapeHtml(it.orderNo) : ''}
+        </div>
+        <div class="pd-label">选择激活时间</div>
+        <div class="act-option ${adState.mode === 'now' ? 'active' : ''}" data-amode="now">
+            <div class="ao-radio"></div>
+            <div>
+                <div class="ao-title">立即激活</div>
+                <div class="ao-desc">从现在开始计算；若当前会员未到期，自动从到期日往后叠加。</div>
+            </div>
+        </div>
+        <div class="act-option ${adState.mode === 'at' ? 'active' : ''}" data-amode="at">
+            <div class="ao-radio"></div>
+            <div>
+                <div class="ao-title">预约激活</div>
+                <div class="ao-desc">到指定日期自动生效，期间一直显示为「未激活」。</div>
+            </div>
+        </div>
+        <div class="act-option ${adState.mode === 'later' ? 'active' : ''}" data-amode="later">
+            <div class="ao-radio"></div>
+            <div>
+                <div class="ao-title">暂不激活</div>
+                <div class="ao-desc">保留在卡片上，需要时再手动激活。</div>
+            </div>
+        </div>
+        ${adState.mode === 'at' ? '<input type="date" class="pd-date" id="adDate" min="' + minDate + '" value="' + adState.date + '">' : ''}`;
+
+    foot.innerHTML = `
+        <button class="sub-btn ghost" id="adCancel">取消</button>
+        <button class="sub-btn primary" id="adConfirm">确定</button>`;
+
+    body.querySelectorAll('[data-amode]').forEach(el => {
+        el.onclick = () => {
+            const di = document.getElementById('adDate');
+            if (di) adState.date = di.value;
+            adState.mode = el.getAttribute('data-amode');
+            renderActivateDialog();
+        };
+    });
+    const di = body.querySelector('#adDate');
+    if (di) di.onchange = () => { adState.date = di.value; };
+
+    foot.querySelector('#adCancel').onclick = closeActivateDialog;
+    foot.querySelector('#adConfirm').onclick = async () => {
+        if (adState.busy) return;
+        const btn = foot.querySelector('#adConfirm');
+        if (adState.mode === 'at') {
+            const d2 = document.getElementById('adDate');
+            if (d2) adState.date = d2.value;
+            if (!adState.date) { alertDialog('提示', '请选择预约激活日期'); return; }
+        }
+        adState.busy = true;
+        btn.disabled = true;
+        btn.textContent = '处理中…';
+        try {
+            let d;
+            if (adState.mode === 'now') {
+                d = await apiSubActivate(adState.groupId);
+            } else if (adState.mode === 'at') {
+                d = await apiSubSchedule(adState.groupId, fromDateInput(adState.date));
+            } else {
+                d = await apiSubSchedule(adState.groupId, null);
+            }
+            if (d.state) applySubState(d.state);
+            closeActivateDialog();
+        } catch (e) {
+            adState.busy = false;
+            btn.disabled = false;
+            btn.textContent = '确定';
+            alertDialog('操作失败', e.message || '请稍后重试');
+        }
+    };
+}
+
+/* ---------------- 客服弹窗 ---------------- */
+function showSupportDialog(opts) {
+    const overlay = document.getElementById('supportOverlay');
+    if (!overlay) return;
+    const o = opts || {};
+    const memberNo = o.memberNo || currentMemberNo();
+    const support = o.support || subSupport || '';
+
+    document.getElementById('sdIcon').textContent = o.icon || '⚠️';
+    document.getElementById('sdTitle').textContent = o.title || '自动开通未完成';
+    document.getElementById('sdDesc').textContent =
+        o.desc || '暂时无法连接爱发电查询订单。请把下方会员编号发送给客服，我们会尽快为你人工开通。';
+    document.getElementById('sdId').textContent = memberNo;
+
+    const supEl = document.getElementById('sdSupportText');
+    supEl.textContent = support || '客服联系方式暂未配置，请通过 App 内的反馈渠道联系管理员。';
+
+    const input = document.getElementById('sdOrderInput');
+    if (input) input.value = '';
+    overlay.classList.add('show');
+}
+
+function closeSupportDialog() {
+    const overlay = document.getElementById('supportOverlay');
+    if (overlay) overlay.classList.remove('show');
+}
+
+function initSupportDialog() {
+    const overlay = document.getElementById('supportOverlay');
+    if (!overlay) return;
+    document.getElementById('sdOkBtn').onclick = closeSupportDialog;
+    overlay.onclick = (e) => { if (e.target === overlay) closeSupportDialog(); };
+
+    document.getElementById('sdCopyBtn').onclick = async (e) => {
+        const btn = e.currentTarget;
+        const text = [
+            '会员编号：' + currentMemberNo(),
+            subSupport ? ('客服联系方式：' + subSupport) : ''
+        ].filter(Boolean).join('\n');
+        const ok = await copyText(text);
+        btn.textContent = ok ? '已复制' : '复制失败';
+        setTimeout(() => { btn.textContent = '复制'; }, 1500);
+    };
+
+    document.getElementById('sdRetryBtn').onclick = async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.textContent = '核对中…';
+        const d = await refreshSubState(true);
+        btn.disabled = false;
+        btn.textContent = '重新检查';
+        if (d && d.ok && d.linked) {
+            closeSupportDialog();
+            alertDialog('开通成功', '已为你自动开通，感谢支持！');
+        } else if (d && d.ok) {
+            alertDialog('暂未查到支付记录', '爱发电还没有返回这笔订单的支付结果，请确认已完成支付，或稍后再试。');
+        }
+    };
+
+    document.getElementById('sdBindBtn').onclick = async (e) => {
+        const btn = e.currentTarget;
+        const input = document.getElementById('sdOrderInput');
+        const no = (input.value || '').trim();
+        if (!no) { alertDialog('提示', '请粘贴爱发电订单号'); return; }
+        btn.disabled = true;
+        btn.textContent = '绑定中…';
+        try {
+            const d = await apiSubBind(no);
+            if (d.state) applySubState(d.state);
+            if (d.ok) {
+                closeSupportDialog();
+                alertDialog('绑定成功', '订单已绑定并开通，感谢支持！');
+            } else {
+                alertDialog('绑定失败', d.message || '请核对订单号后重试，或联系客服。');
+            }
+        } catch (err) {
+            alertDialog('绑定失败', err.message || '网络异常');
+        }
+        btn.disabled = false;
+        btn.textContent = '绑定';
+    };
+}
+
+/* ---------------- 弹窗初始化 ---------------- */
+function initSubscriptionDialogs() {
+    const pOverlay = document.getElementById('purchaseOverlay');
+    if (pOverlay) {
+        const close = document.getElementById('pdCloseBtn');
+        if (close) close.onclick = closePurchaseDialog;
+        pOverlay.onclick = (e) => { if (e.target === pOverlay) closePurchaseDialog(); };
+    }
+    const aOverlay = document.getElementById('activateOverlay');
+    if (aOverlay) {
+        const close = document.getElementById('adCloseBtn');
+        if (close) close.onclick = closeActivateDialog;
+        aOverlay.onclick = (e) => { if (e.target === aOverlay) closeActivateDialog(); };
+    }
+    initSupportDialog();
+}
+initSubscriptionDialogs();
+
+window.addEventListener('beforeunload', stopSubPolling);
 
 /* =========================================================================
  * 29. 讨论区（Waline 动态加载）

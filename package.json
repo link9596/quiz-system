@@ -10,14 +10,21 @@
 
     "db:init": "wrangler d1 execute quiz-db --file=./schema.sql --remote",
     "db:init:local": "wrangler d1 execute quiz-db --file=./schema.sql --local",
+    "db:migrate": "wrangler d1 execute quiz-db --file=./migrate.sql --remote",
+    "db:migrate:local": "wrangler d1 execute quiz-db --file=./migrate.sql --local",
     "db:reset": "wrangler d1 execute quiz-db --file=./reset.sql --remote",
     "db:reset:local": "wrangler d1 execute quiz-db --file=./reset.sql --local",
     "db:shell": "wrangler d1 execute quiz-db --command=\"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name\" --remote",
     "db:count": "wrangler d1 execute quiz-db --command=\"SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM sessions) AS sessions, (SELECT COUNT(*) FROM q_state) AS q_state, (SELECT COUNT(*) FROM mock_log) AS mock_log\" --remote",
 
     "secret:pepper": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\" | wrangler secret put PASSWORD_PEPPER",
-    "secret:afdian": "wrangler secret put AFDIAN_TOKEN",
+    "secret:afdian": "wrangler secret put AFDIAN_USER_ID && wrangler secret put AFDIAN_TOKEN",
     "secret:list": "wrangler secret list",
+
+    "test": "node tests/pepper.test.mjs && node tests/migrate.test.mjs && node tests/subscription.test.mjs && node tests/http.test.mjs",
+    "test:engine": "node tests/subscription.test.mjs",
+    "test:http": "node tests/http.test.mjs",
+    "test:migrate": "node tests/migrate.test.mjs",
 
     "setup": "npm run db:init && npm run secret:pepper",
     "redeploy": "npm run deploy && npm run logs"

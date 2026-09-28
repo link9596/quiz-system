@@ -1,5 +1,6 @@
 import { jsonResponse, parseCookies, generateId, sha256Hex, checkRateLimit } from './utils.js';
 import { hashPassword, verifyPassword, generateSessionToken } from './crypto.js';
+import { getSubscriptionSummary } from './subscription.js';
 
 const SESSION_DURATION = 7 * 86400;
 
@@ -47,8 +48,10 @@ async function handleRegister(request, env) {
 
     const session = await createSession(env, userId, now);
 
+    const sub = await getSubscriptionSummary(env, userId, now);
+
     return jsonResponse(
-        { id: userId, email, nickname: nickname || null, subscription: { status: 'inactive' } },
+        { id: userId, email, nickname: nickname || null, subscription: sub },
         200,
         { 'Set-Cookie': buildSessionCookie(session.token, session.expiresAt, env) }
     );
@@ -100,7 +103,7 @@ async function handleLogin(request, env) {
 
     await env.DB.prepare('DELETE FROM login_attempts WHERE identifier = ?').bind(email).run();
 
-    const sub = await getActiveSubscription(env, user.id, now);
+    const sub = await getSubscriptionSummary(env, user.id, now);
     const session = await createSession(env, user.id, now);
 
     return jsonResponse(
@@ -123,7 +126,7 @@ async function handleLogout(request, env) {
 async function handleMe(request, env) {
     const session = await requireAuth(request, env);
     if (!session) return jsonResponse({ error: '未登录' }, 401);
-    const sub = await getActiveSubscription(env, session.userId, Math.floor(Date.now() / 1000));
+    const sub = await getSubscriptionSummary(env, session.userId, Math.floor(Date.now() / 1000));
     return jsonResponse({
         id: session.userId, email: session.email, nickname: session.nickname, subscription: sub
     });
@@ -140,13 +143,16 @@ async function createSession(env, userId, now) {
     return { token, expiresAt };
 }
 
-async function getActiveSubscription(env, userId, now) {
-    const sub = await env.DB.prepare(
-        `SELECT plan, expire_at FROM subscriptions
-         WHERE user_id = ? AND status = 'active' AND expire_at > ?
-         ORDER BY expire_at DESC LIMIT 1`
-    ).bind(userId, now).first();
-    return sub ? { status: 'active', plan: sub.plan, expireAt: sub.expire_at * 1000 } : { status: 'inactive' };
+/**
+ * 判断用户是否拥有某个科目的有效权益（供题库鉴权复用）。
+ * 订阅状态的完整计算见 src/subscription.js 的 getSubscriptionState。
+ */
+export async function hasSubjectAccess(env, userId, subject, now = Math.floor(Date.now() / 1000)) {
+    const row = await env.DB.prepare(
+        `SELECT MAX(expire_at) AS expire_at FROM subscriptions
+          WHERE user_id = ? AND subject = ? AND status = 'active' AND expire_at > ?`
+    ).bind(userId, subject, now).first();
+    return !!(row && row.expire_at);
 }
 
 function isCrossOrigin(env) {
