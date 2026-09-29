@@ -1042,7 +1042,7 @@ html.light-theme .sub-card {
     pointer-events: none; visibility: hidden;
     transition: opacity .5s var(--ease-gate), transform .62s var(--ease-gate), visibility 0s linear .62s;
 }
-/* 应用外壳：登录前不可见也不可点 */
+/* 应用外壳 */
 .app-container { transition: opacity .35s var(--ease-gate), transform .45s var(--ease-gate); }
 .app-container.gone { opacity: 0; transform: scale(.975); pointer-events: none; }
 
@@ -1160,7 +1160,7 @@ html.light-theme .sub-card {
     text-align: center; padding: 60px 20px;
     color: var(--text-secondary); font-size: 14px; line-height: 1.7;
 }
-#waline { --waline-theme-color: var(--accent-blue); --waline-color: var(--text-primary); }
+#waline { --waline-theme-color: var(--accent-blue); --waline-color: var(--text-primary); --waline-bg-color: #ffffff00; --waline-border: 0px; --waline-bg-color-light: var(--card-bg); }
 
 @media (max-width: 600px) {
     .header { padding: 0 10px; height: calc(52px + env(safe-area-inset-top)); }
@@ -5349,7 +5349,7 @@ function renderPurchaseStep() {
         </div>
 
         <div class="pd-hint">
-            前往爱发电完成支付，系统会自动查询订单并开通，无需回来手动操作。<br>
+            前往爱发电完成支付，系统会自动查询订单并开通。<br>
             会员编号：<b style="font-family:ui-monospace,Menlo,monospace;">${escapeHtml(currentMemberNo())}</b>
         </div>`;
 
